@@ -3111,7 +3111,7 @@ function Library:CreateWindow(...)
         local TabButtonWidth = Library:GetTextBounds(Name, Library.Font, 16);
         local IconWidth = 0
         if IconData then
-            IconWidth = 16 + 6 -- icon (16px) + spacing
+            IconWidth = 24 + 6 -- icon + spacing (keeps behavior similar to uilib)
         end
 
         local TabButton = Library:Create('Frame', {
@@ -3127,7 +3127,7 @@ function Library:CreateWindow(...)
             BorderColor3 = 'OutlineColor';
         });
 
-        -- use UIListLayout so icon sits left and is vertically centered with text
+        -- layout so icon + text are centered and vertically aligned
         Library:Create('UIListLayout', {
             FillDirection = Enum.FillDirection.Horizontal;
             HorizontalAlignment = Enum.HorizontalAlignment.Center;
@@ -3136,11 +3136,11 @@ function Library:CreateWindow(...)
             Parent = TabButton;
         });
 
-        -- icon (if provided)
+        -- icon (if provided) — placed to the left of the label and vertically centered by UIListLayout
         if IconData then
             local TabIcon = Library:Create('ImageLabel', {
-                Size = UDim2.fromOffset(16, 16);
                 BackgroundTransparency = 1;
+                Size = UDim2.new(0, 24, 0, 24);
                 Image = IconData.Url;
                 ImageColor3 = IconData.Custom and Library.FontColor or Library.AccentColor;
                 ImageRectOffset = IconData.ImageRectOffset;
@@ -3155,8 +3155,9 @@ function Library:CreateWindow(...)
             });
         end
 
+        local _textW = Library:GetTextBounds(Name, Library.Font, 16);
         local TabButtonLabel = Library:CreateLabel({
-            Size = UDim2.new(0, Library:GetTextBounds(Name, Library.Font, 16), 1, 0);
+            Size = UDim2.new(0, _textW, 1, 0);
             Text = Name;
             TextXAlignment = Enum.TextXAlignment.Left;
             ZIndex = 1;
