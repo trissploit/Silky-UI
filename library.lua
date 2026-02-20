@@ -3496,17 +3496,22 @@ function Library:CreateWindow(...)
         Parent = TabArea;
     });
 
-    -- shared indicator bar that slides (tweens) to the selected tab
+    -- shared outline selector that slides (tweens) to the selected tab
     local _TabIndicator = Library:Create('Frame', {
-        BackgroundColor3 = Library.OutlineColor;
+        BackgroundTransparency = 1;
         BorderSizePixel = 0;
-        Size = UDim2.new(0, 0, 0, 1);
-        Position = UDim2.new(0, 0, 1, -1);
+        Size = UDim2.new(0, 0, 1, 0);
+        Position = UDim2.new(0, 0, 0, 0);
         ZIndex = 6;
         Parent = TabArea;
     });
-    Library:ApplyCornerRadius(Library:AddUICorner(_TabIndicator, 100), 100);
-    Library:AddToRegistry(_TabIndicator, { BackgroundColor3 = 'OutlineColor' });
+    Library:ApplyCornerRadius(Library:AddUICorner(_TabIndicator));
+    local _TabIndicatorStroke = Library:Create('UIStroke', {
+        Color = Library.AccentColor;
+        Thickness = 1;
+        Parent = _TabIndicator;
+    });
+    Library:AddToRegistry(_TabIndicatorStroke, { Color = 'AccentColor' });
 
     local TabContainer = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
@@ -3645,12 +3650,12 @@ function Library:CreateWindow(...)
             Blocker.BackgroundTransparency = 0;
             TabButton.BackgroundColor3 = Library.MainColor;
             Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'MainColor';
-            -- slide indicator to this tab
+            -- slide outline to this tab
             pcall(function()
                 local relX = TabButton.AbsolutePosition.X - TabArea.AbsolutePosition.X
                 TweenService:Create(_TabIndicator, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    Position = UDim2.new(0, relX, 1, -1),
-                    Size = UDim2.new(0, TabButton.AbsoluteSize.X, 0, 1),
+                    Position = UDim2.new(0, relX, 0, 0),
+                    Size = UDim2.new(0, TabButton.AbsoluteSize.X, 1, 0),
                 }):Play()
             end)
             TabFrame.Visible = true;
