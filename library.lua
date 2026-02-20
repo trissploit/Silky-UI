@@ -1913,8 +1913,6 @@ do
         end
 
         Groupbox:Resize()
-
-        table.insert(Groupbox.Elements, { Holder = Holder, Type = 'Divider' })
     end
 
     function Funcs:AddInput(Idx, Info)
