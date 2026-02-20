@@ -1731,23 +1731,13 @@ do
                 { BorderColor3 = 'Black' }
             );
 
-            -- hover/press animations
+            -- subtle scale animation on hover
             Outer.MouseEnter:Connect(function()
                 TweenService:Create(Outer, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -4, 0, 22)}):Play()
             end)
             Outer.MouseLeave:Connect(function()
                 TweenService:Create(Outer, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -4, 0, 20)}):Play()
-            end)
-            Outer.InputBegan:Connect(function(inp)
-                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-                    TweenService:Create(Outer, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {Size = UDim2.new(1, -4, 0, 18)}):Play()
-                end
-            end)
-            Outer.InputEnded:Connect(function(inp)
-                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-                    TweenService:Create(Outer, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {Size = UDim2.new(1, -4, 0, 20)}):Play()
-                end
-            end)
+            end) 
 
             return Outer, Inner, Label
         end
@@ -2205,13 +2195,13 @@ do
             { BorderColor3 = 'AccentColor' },
             { BorderColor3 = 'Black' }
         );
-        -- hover scale
+        -- toggle hover scale
         ToggleRegion.MouseEnter:Connect(function()
-            TweenService:Create(ToggleOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {Size = ToggleOuter.Size + UDim2.new(0, 2, 0, 2)}):Play()
+            TweenService:Create(ToggleOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 15, 0, 15)}):Play()
         end)
         ToggleRegion.MouseLeave:Connect(function()
-            TweenService:Create(ToggleOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {Size = UDim2.new(0, 13, 0, 13)}):Play()
-        end)
+            TweenService:Create(ToggleOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 13, 0, 13)}):Play()
+        end) 
 
         function Toggle:UpdateColors()
             Toggle:Display();
@@ -2222,13 +2212,8 @@ do
         end
 
         function Toggle:Display()
-            local targetColor = Toggle.Value and Library.AccentColor or Library.MainColor
-            local targetBorder = Toggle.Value and Library.AccentColorDark or Library.OutlineColor
-
-            TweenService:Create(ToggleInner, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                BackgroundColor3 = targetColor,
-                BorderColor3 = targetBorder,
-            }):Play()
+            ToggleInner.BackgroundColor3 = Toggle.Value and Library.AccentColor or Library.MainColor;
+            ToggleInner.BorderColor3 = Toggle.Value and Library.AccentColorDark or Library.OutlineColor;
 
             Library.RegistryMap[ToggleInner].Properties.BackgroundColor3 = Toggle.Value and 'AccentColor' or 'MainColor';
             Library.RegistryMap[ToggleInner].Properties.BorderColor3 = Toggle.Value and 'AccentColorDark' or 'OutlineColor';
@@ -2354,10 +2339,10 @@ do
         -- slim centered track (pill appearance)
         local Track = Library:Create('Frame', {
             BackgroundColor3 = Library:GetDarkerColor(Library.MainColor);
+            BackgroundTransparency = 1; -- hide track background
             BorderSizePixel = 0;
             Position = UDim2.new(0, 4, 0.5, -3); -- small vertical center offset
             Size = UDim2.new(1, -8, 0, 6); -- thin track
-            BackgroundTransparency = 1; -- hide background
             ZIndex = 6;
             Parent = SliderInner;
         });
@@ -2459,31 +2444,24 @@ do
             { BorderColor3 = 'AccentColor' },
             { BorderColor3 = 'Black' }
         );
-        -- mimic button hover and click scale
-        SliderOuter.InputBegan:Connect(function(inp)
-            if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-                TweenService:Create(SliderOuter, TweenInfo.new(0.1, Enum.EasingStyle.Linear), {Size = UDim2.new(1, -4, 0, 14)}):Play()
-            end
-        end)
-        SliderOuter.InputEnded:Connect(function(inp)
-            if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-                TweenService:Create(SliderOuter, TweenInfo.new(0.1, Enum.EasingStyle.Linear), {Size = UDim2.new(1, -4, 0, 16)}):Play()
-            end
-        end)
         SliderOuter.MouseEnter:Connect(function()
-            TweenService:Create(SliderOuter, TweenInfo.new(0.15), {Size = UDim2.new(1, -4, 0, 18)}):Play()
+            if Slider._SlideCircle then
+                TweenService:Create(Slider._SlideCircle, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    {Size = UDim2.new(0, Slider._KnobSize+4, 0, Slider._KnobSize+4)})
+                    :Play()
+            end
         end)
         SliderOuter.MouseLeave:Connect(function()
-            TweenService:Create(SliderOuter, TweenInfo.new(0.15), {Size = UDim2.new(1, -4, 0, 16)}):Play()
+            if Slider._SlideCircle then
+                TweenService:Create(Slider._SlideCircle, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    {Size = UDim2.new(0, Slider._KnobSize, 0, Slider._KnobSize)})
+                    :Play()
+            end
         end)
 
         if type(Info.Tooltip) == 'string' then
             Library:AddToolTip(Info.Tooltip, SliderOuter)
         end
-
-        -- button press/hover scale animation
-        SliderOuter:GetPropertyChangedSignal('AbsoluteSize'):Connect(function() end) -- dummy to keep reference
-
 
         function Slider:UpdateColors()
             Fill.BackgroundColor3 = Library.AccentColor;
