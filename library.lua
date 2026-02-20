@@ -1913,6 +1913,8 @@ do
         end
 
         Groupbox:Resize()
+
+        table.insert(Groupbox.Elements, { Holder = Holder, Type = 'Divider' })
     end
 
     function Funcs:AddInput(Idx, Info)
@@ -3542,7 +3544,7 @@ function Library:CreateWindow(...)
         end;
 
         function Tab:AddGroupbox(Info)
-            local Groupbox = {};
+            local Groupbox = { Elements = {} };
 
             local BoxOuter = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
