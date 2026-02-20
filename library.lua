@@ -45,8 +45,7 @@ local Library = {
     Signals = {};
     ScreenGui = ScreenGui;
 
-    -- UI rounding radius (pixels). Set via CreateWindow Config.Rounding or change directly.
-    Rounding = 0;
+    CornerRadius = 0; -- default, overridden by CreateWindow Config.CornerRadius
 };
 
 local RainbowStep = 0
@@ -146,13 +145,6 @@ function Library:ApplyTextStroke(Inst)
     });
 end;
 
--- Applies a UICorner to an instance using the current Library.Rounding value (no-op when 0).
-function Library:ApplyRounding(inst, override)
-    local r = override or Library.Rounding;
-    if r <= 0 then return end;
-    Instance.new('UICorner', inst).CornerRadius = UDim.new(0, r);
-end;
-
 function Library:CreateLabel(Properties, IsHud)
     local _Instance = Library:Create('TextLabel', {
         BackgroundTransparency = 1;
@@ -211,7 +203,6 @@ function Library:AddToolTip(InfoStr, HoverInstance)
 
         Visible = false,
     })
-    Library:ApplyRounding(Tooltip);
 
     local Label = Library:CreateLabel({
         Position = UDim2.fromOffset(3, 1),
@@ -327,6 +318,20 @@ function Library:GetDarkerColor(Color)
 end;
 Library.AccentColorDark = Library:GetDarkerColor(Library.AccentColor);
 
+function Library:AddUICorner(Parent, RadiusOverride)
+    local r = RadiusOverride or Library.CornerRadius;
+    if r and r > 0 then
+        return Instance.new('UICorner', Parent);
+    end;
+    return nil;
+end;
+
+function Library:ApplyCornerRadius(Corner)
+    if Corner then
+        Corner.CornerRadius = UDim.new(0, Library.CornerRadius);
+    end;
+end;
+
 function Library:AddToRegistry(Instance, Properties, IsHud)
     local Idx = #Library.Registry + 1;
     local Data = {
@@ -432,6 +437,8 @@ do
             Type = 'ColorPicker';
             Title = type(Info.Title) == 'string' and Info.Title or 'Color picker',
             Callback = Info.Callback or function(Color) end;
+            Gradient = Info.Gradient or false;
+            GradientColor = Info.GradientDefault or Info.Default;
         };
 
         function ColorPicker:SetHSVFromRGB(Color)
@@ -452,13 +459,14 @@ do
             ZIndex = 6;
             Parent = ToggleLabel;
         });
-        Library:ApplyRounding(DisplayFrame, 3);
 
-        -- Gradient overlay for gradient color picker appearance
-        local DisplayGradient = Library:Create('UIGradient', {
+        Library:ApplyCornerRadius(Library:AddUICorner(DisplayFrame));
+
+        -- Gradient display overlay (visible when Gradient is enabled)
+        local GradientOverlay = Library:Create('UIGradient', {
             Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Library.AccentColor),
-                ColorSequenceKeypoint.new(1, ColorPicker.Value),
+                ColorSequenceKeypoint.new(0, ColorPicker.Value),
+                ColorSequenceKeypoint.new(1, ColorPicker.GradientColor),
             });
             Parent = DisplayFrame;
         });
@@ -488,7 +496,8 @@ do
             ZIndex = 15;
             Parent = ScreenGui,
         });
-        Library:ApplyRounding(PickerFrameOuter, 6);
+
+        Library:ApplyCornerRadius(Library:AddUICorner(PickerFrameOuter));
 
         DisplayFrame:GetPropertyChangedSignal('AbsolutePosition'):Connect(function()
             PickerFrameOuter.Position = UDim2.fromOffset(DisplayFrame.AbsolutePosition.X, DisplayFrame.AbsolutePosition.Y + 18);
@@ -502,6 +511,8 @@ do
             ZIndex = 16;
             Parent = PickerFrameOuter;
         });
+
+        Library:ApplyCornerRadius(Library:AddUICorner(PickerFrameInner));
 
         local Highlight = Library:Create('Frame', {
             BackgroundColor3 = Library.AccentColor;
@@ -868,11 +879,16 @@ do
                 BorderColor3 = Library:GetDarkerColor(ColorPicker.Value);
             });
 
-            -- keep gradient updated to current color + accent
-            DisplayGradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Library.AccentColor),
-                ColorSequenceKeypoint.new(1, ColorPicker.Value),
-            });
+            -- Update gradient overlay
+            if ColorPicker.Gradient then
+                GradientOverlay.Enabled = true;
+                GradientOverlay.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, ColorPicker.Value),
+                    ColorSequenceKeypoint.new(1, ColorPicker.GradientColor),
+                });
+            else
+                GradientOverlay.Enabled = false;
+            end;
 
             if TransparencyBoxInner then
                 TransparencyBoxInner.BackgroundColor3 = ColorPicker.Value;
@@ -1461,7 +1477,8 @@ do
                 Size = UDim2.new(1, -4, 0, 20);
                 ZIndex = 5;
             });
-            Library:ApplyRounding(Outer);
+
+            Library:ApplyCornerRadius(Library:AddUICorner(Outer));
 
             local Inner = Library:Create('Frame', {
                 BackgroundColor3 = Library.MainColor;
@@ -1471,7 +1488,8 @@ do
                 ZIndex = 6;
                 Parent = Outer;
             });
-            Library:ApplyRounding(Inner);
+
+            Library:ApplyCornerRadius(Library:AddUICorner(Inner));
 
             local Label = Library:CreateLabel({
                 Size = UDim2.new(1, 0, 1, 0);
@@ -1628,28 +1646,17 @@ do
             Type = 'Divider',
         }
 
+        Groupbox:AddBlank(2);
         local DividerOuter = Library:Create('Frame', {
-            BackgroundColor3 = Color3.new(0, 0, 0);
+            BackgroundColor3 = Library.OutlineColor;
             BorderSizePixel = 0;
-            Size = UDim2.new(1, -12, 0, 1);
+            Size = UDim2.new(1, -4, 0, 1);
             ZIndex = 5;
             Parent = Container;
         });
 
-        -- modern gradient line
-        Library:Create('UIGradient', {
-            Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
-                ColorSequenceKeypoint.new(0.2, Library.OutlineColor),
-                ColorSequenceKeypoint.new(0.5, Library.AccentColor),
-                ColorSequenceKeypoint.new(0.8, Library.OutlineColor),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0)),
-            });
-            Parent = DividerOuter;
-        });
-
         Library:AddToRegistry(DividerOuter, {
-            BorderColor3 = 'Black';
+            BackgroundColor3 = 'OutlineColor';
         });
 
         Groupbox:AddBlank(9);
@@ -1689,6 +1696,8 @@ do
             Parent = Container;
         });
 
+        Library:ApplyCornerRadius(Library:AddUICorner(TextBoxOuter));
+
         local TextBoxInner = Library:Create('Frame', {
             BackgroundColor3 = Library.MainColor;
             BorderColor3 = Library.OutlineColor;
@@ -1697,6 +1706,8 @@ do
             ZIndex = 6;
             Parent = TextBoxOuter;
         });
+
+        Library:ApplyCornerRadius(Library:AddUICorner(TextBoxInner));
 
         Library:AddToRegistry(TextBoxInner, {
             BackgroundColor3 = 'MainColor';
@@ -1863,7 +1874,8 @@ do
             ZIndex = 5;
             Parent = Container;
         });
-        Library:ApplyRounding(ToggleOuter, math.max(Library.Rounding, 2));
+
+        Library:ApplyCornerRadius(Library:AddUICorner(ToggleOuter));
 
         Library:AddToRegistry(ToggleOuter, {
             BorderColor3 = 'Black';
@@ -1877,7 +1889,8 @@ do
             ZIndex = 6;
             Parent = ToggleOuter;
         });
-        Library:ApplyRounding(ToggleInner, math.max(Library.Rounding, 2));
+
+        Library:ApplyCornerRadius(Library:AddUICorner(ToggleInner));
 
         Library:AddToRegistry(ToggleInner, {
             BackgroundColor3 = 'MainColor';
@@ -2018,12 +2031,12 @@ do
         local SliderOuter = Library:Create('Frame', {
             BackgroundColor3 = Color3.new(0, 0, 0);
             BorderColor3 = Color3.new(0, 0, 0);
-            -- taller modern track
-            Size = UDim2.new(1, -4, 0, 16);
+            Size = UDim2.new(1, -4, 0, 13);
             ZIndex = 5;
             Parent = Container;
         });
-        Library:ApplyRounding(SliderOuter, 8);
+
+        Library:ApplyCornerRadius(Library:AddUICorner(SliderOuter));
 
         Library:AddToRegistry(SliderOuter, {
             BorderColor3 = 'Black';
@@ -2037,7 +2050,8 @@ do
             ZIndex = 6;
             Parent = SliderOuter;
         });
-        Library:ApplyRounding(SliderInner, 8);
+
+        Library:ApplyCornerRadius(Library:AddUICorner(SliderInner));
 
         Library:AddToRegistry(SliderInner, {
             BackgroundColor3 = 'MainColor';
@@ -2047,27 +2061,24 @@ do
         local Fill = Library:Create('Frame', {
             BackgroundColor3 = Library.AccentColor;
             BorderColor3 = Library.AccentColorDark;
-            -- clip to pill shape
-            ClipsDescendants = false;
             Size = UDim2.new(0, 0, 1, 0);
             ZIndex = 7;
             Parent = SliderInner;
         });
-        Library:ApplyRounding(Fill, 8);
+
+        Library:ApplyCornerRadius(Library:AddUICorner(Fill));
 
         Library:AddToRegistry(Fill, {
             BackgroundColor3 = 'AccentColor';
             BorderColor3 = 'AccentColorDark';
         });
 
-        -- modern HideBorderRight hidden; pill fill looks clean without it
         local HideBorderRight = Library:Create('Frame', {
             BackgroundColor3 = Library.AccentColor;
             BorderSizePixel = 0;
             Position = UDim2.new(1, 0, 0, 0);
             Size = UDim2.new(0, 1, 1, 0);
             ZIndex = 8;
-            Visible = false;
             Parent = Fill;
         });
 
@@ -2110,7 +2121,8 @@ do
 
             local X = math.ceil(Library:MapValue(Slider.Value, Slider.Min, Slider.Max, 0, Slider.MaxSize));
             Fill.Size = UDim2.new(0, X, 1, 0);
-            -- HideBorderRight not needed with pill shape
+
+            HideBorderRight.Visible = not (X == Slider.MaxSize or X == 0);
         end;
 
         function Slider:OnChanged(Func)
@@ -2242,6 +2254,8 @@ do
             Parent = Container;
         });
 
+        Library:ApplyCornerRadius(Library:AddUICorner(DropdownOuter));
+
         Library:AddToRegistry(DropdownOuter, {
             BorderColor3 = 'Black';
         });
@@ -2254,6 +2268,8 @@ do
             ZIndex = 6;
             Parent = DropdownOuter;
         });
+
+        Library:ApplyCornerRadius(Library:AddUICorner(DropdownInner));
 
         Library:AddToRegistry(DropdownInner, {
             BackgroundColor3 = 'MainColor';
@@ -2731,64 +2747,35 @@ do
         Parent = Library.NotificationArea;
     });
 
-    -- Modern pill-style watermark with frosted gradient and accent underline
     local WatermarkOuter = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
         BorderSizePixel = 0;
         Position = UDim2.new(0, 100, 0, 10);
-        Size = UDim2.new(0, 213, 0, 26);
+        Size = UDim2.new(0, 213, 0, 28);
         ZIndex = 200;
         Visible = false;
         Parent = ScreenGui;
     });
-    Library:ApplyRounding(WatermarkOuter, 6);
 
-    Library:AddToRegistry(WatermarkOuter, {
-        BackgroundColor3 = 'MainColor';
-    });
+    Library:ApplyCornerRadius(Library:AddUICorner(WatermarkOuter));
 
-    -- Gradient sweep for depth
-    local WatermarkGradient = Library:Create('UIGradient', {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 200)),
-        });
-        Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.85),
-            NumberSequenceKeypoint.new(1, 0.92),
-        });
-        Rotation = -90;
-        Parent = WatermarkOuter;
-    });
-
-    -- Accent bottom-border line
+    -- Modern accent stripe on the left
     local WatermarkAccent = Library:Create('Frame', {
         BackgroundColor3 = Library.AccentColor;
         BorderSizePixel = 0;
-        AnchorPoint = Vector2.new(0, 1);
-        Position = UDim2.new(0, 0, 1, 0);
-        Size = UDim2.new(1, 0, 0, 2);
-        ZIndex = 201;
+        Position = UDim2.new(0, 0, 0, 0);
+        Size = UDim2.new(0, 3, 1, 0);
+        ZIndex = 204;
         Parent = WatermarkOuter;
     });
-    Library:ApplyRounding(WatermarkAccent, 2);
-    Library:AddToRegistry(WatermarkAccent, { BackgroundColor3 = 'AccentColor' });
 
-    -- Left accent dot
-    local WatermarkDot = Library:Create('Frame', {
-        BackgroundColor3 = Library.AccentColor;
-        BorderSizePixel = 0;
-        AnchorPoint = Vector2.new(0, 0.5);
-        Position = UDim2.new(0, 6, 0.5, 0);
-        Size = UDim2.new(0, 6, 0, 6);
-        ZIndex = 202;
-        Parent = WatermarkOuter;
+    Library:AddToRegistry(WatermarkAccent, {
+        BackgroundColor3 = 'AccentColor';
     });
-    Library:ApplyRounding(WatermarkDot, 3);
-    Library:AddToRegistry(WatermarkDot, { BackgroundColor3 = 'AccentColor' });
 
-    local WatermarkInner = Library:Create('Frame', {
-        BackgroundTransparency = 1;
+    -- Subtle gradient backdrop
+    local InnerFrame = Library:Create('Frame', {
+        BackgroundColor3 = Color3.new(1, 1, 1);
         BorderSizePixel = 0;
         Position = UDim2.new(0, 0, 0, 0);
         Size = UDim2.new(1, 0, 1, 0);
@@ -2796,13 +2783,33 @@ do
         Parent = WatermarkOuter;
     });
 
+    Library:ApplyCornerRadius(Library:AddUICorner(InnerFrame));
+
+    local Gradient = Library:Create('UIGradient', {
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
+            ColorSequenceKeypoint.new(1, Library.MainColor),
+        });
+        Rotation = 90;
+        Parent = InnerFrame;
+    });
+
+    Library:AddToRegistry(Gradient, {
+        Color = function()
+            return ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
+                ColorSequenceKeypoint.new(1, Library.MainColor),
+            });
+        end
+    });
+
     local WatermarkLabel = Library:CreateLabel({
-        Position = UDim2.new(0, 16, 0, 0);
-        Size = UDim2.new(1, -20, 1, -2);
-        TextSize = 13;
+        Position = UDim2.new(0, 10, 0, 0);
+        Size = UDim2.new(1, -14, 1, 0);
+        TextSize = 14;
         TextXAlignment = Enum.TextXAlignment.Left;
         ZIndex = 203;
-        Parent = WatermarkOuter;
+        Parent = InnerFrame;
     });
 
     Library.Watermark = WatermarkOuter;
@@ -2886,8 +2893,8 @@ function Library:SetWatermarkVisibility(Bool)
 end;
 
 function Library:SetWatermark(Text)
-    local X, Y = Library:GetTextBounds(Text, Library.Font, 13);
-    Library.Watermark.Size = UDim2.new(0, X + 28, 0, 26);
+    local X, Y = Library:GetTextBounds(Text, Library.Font, 14);
+    Library.Watermark.Size = UDim2.new(0, X + 15, 0, (Y * 1.5) + 3);
     Library:SetWatermarkVisibility(true)
 
     Library.WatermarkText.Text = Text;
@@ -2998,7 +3005,9 @@ function Library:CreateWindow(...)
     if type(Config.Title) ~= 'string' then Config.Title = 'No title' end
     if type(Config.TabPadding) ~= 'number' then Config.TabPadding = 0 end
     if type(Config.MenuFadeTime) ~= 'number' then Config.MenuFadeTime = 0.2 end
-    if type(Config.Rounding) == 'number' then Library.Rounding = Config.Rounding end
+    if type(Config.CornerRadius) ~= 'number' then Config.CornerRadius = 0 end
+
+    Library.CornerRadius = Config.CornerRadius;
 
     if typeof(Config.Position) ~= 'UDim2' then Config.Position = UDim2.fromOffset(175, 50) end
     if typeof(Config.Size) ~= 'UDim2' then Config.Size = UDim2.fromOffset(550, 600) end
@@ -3023,6 +3032,8 @@ function Library:CreateWindow(...)
         Parent = ScreenGui;
     });
 
+    Library:ApplyCornerRadius(Library:AddUICorner(Outer));
+
     Library:MakeDraggable(Outer, 25);
 
     local Inner = Library:Create('Frame', {
@@ -3034,6 +3045,8 @@ function Library:CreateWindow(...)
         ZIndex = 1;
         Parent = Outer;
     });
+
+    Library:ApplyCornerRadius(Library:AddUICorner(Inner));
 
     Library:AddToRegistry(Inner, {
         BackgroundColor3 = 'MainColor';
@@ -3058,6 +3071,8 @@ function Library:CreateWindow(...)
         Parent = Inner;
     });
 
+    Library:ApplyCornerRadius(Library:AddUICorner(MainSectionOuter));
+
     Library:AddToRegistry(MainSectionOuter, {
         BackgroundColor3 = 'BackgroundColor';
         BorderColor3 = 'OutlineColor';
@@ -3073,6 +3088,8 @@ function Library:CreateWindow(...)
         Parent = MainSectionOuter;
     });
 
+    Library:ApplyCornerRadius(Library:AddUICorner(MainSectionInner));
+
     Library:AddToRegistry(MainSectionInner, {
         BackgroundColor3 = 'BackgroundColor';
     });
@@ -3086,8 +3103,8 @@ function Library:CreateWindow(...)
     });
 
     local TabListLayout = Library:Create('UIListLayout', {
-        -- 3 px spacing between tab buttons
-        Padding = UDim.new(0, (Config.TabPadding or 0) + 3);
+        -- keep any user-configured padding but add a default spacing so tabs aren't glued together
+        Padding = UDim.new(0, (Config.TabPadding or 0) + 8);
         FillDirection = Enum.FillDirection.Horizontal;
         SortOrder = Enum.SortOrder.LayoutOrder;
         HorizontalAlignment = Enum.HorizontalAlignment.Center;
@@ -3104,6 +3121,8 @@ function Library:CreateWindow(...)
         ZIndex = 2;
         Parent = MainSectionInner;
     });
+
+    Library:ApplyCornerRadius(Library:AddUICorner(TabContainer));
     
 
     Library:AddToRegistry(TabContainer, {
@@ -3131,7 +3150,8 @@ function Library:CreateWindow(...)
             ZIndex = 4;
             Parent = TabArea;
         });
-        Library:ApplyRounding(TabButton);
+
+        Library:ApplyCornerRadius(Library:AddUICorner(TabButton));
 
         Library:AddToRegistry(TabButton, {
             BackgroundColor3 = 'BackgroundColor';
@@ -3253,7 +3273,8 @@ function Library:CreateWindow(...)
                 ZIndex = 2;
                 Parent = Info.Side == 1 and LeftSide or RightSide;
             });
-            Library:ApplyRounding(BoxOuter);
+
+            Library:ApplyCornerRadius(Library:AddUICorner(BoxOuter));
 
             Library:AddToRegistry(BoxOuter, {
                 BackgroundColor3 = 'BackgroundColor';
@@ -3269,6 +3290,8 @@ function Library:CreateWindow(...)
                 ZIndex = 4;
                 Parent = BoxOuter;
             });
+
+            Library:ApplyCornerRadius(Library:AddUICorner(BoxInner));
 
             Library:AddToRegistry(BoxInner, {
                 BackgroundColor3 = 'BackgroundColor';
@@ -3355,6 +3378,8 @@ function Library:CreateWindow(...)
                 Parent = Info.Side == 1 and LeftSide or RightSide;
             });
 
+            Library:ApplyCornerRadius(Library:AddUICorner(BoxOuter));
+
             Library:AddToRegistry(BoxOuter, {
                 BackgroundColor3 = 'BackgroundColor';
                 BorderColor3 = 'OutlineColor';
@@ -3369,6 +3394,8 @@ function Library:CreateWindow(...)
                 ZIndex = 4;
                 Parent = BoxOuter;
             });
+
+            Library:ApplyCornerRadius(Library:AddUICorner(BoxInner));
 
             Library:AddToRegistry(BoxInner, {
                 BackgroundColor3 = 'BackgroundColor';
