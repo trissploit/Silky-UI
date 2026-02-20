@@ -3127,12 +3127,12 @@ function Library:CreateWindow(...)
             BorderColor3 = 'OutlineColor';
         });
 
-        -- icon (if provided) — render on the right and reserve space for it
+        -- icon (if provided)
         if IconData then
             local TabIcon = Library:Create('ImageLabel', {
-                AnchorPoint = Vector2.new(1, 0.5);
-                Position = UDim2.new(1, -6, 0.5, 0);
-                Size = UDim2.new(0, 24, 0, 24);
+                AnchorPoint = Vector2.new(0, 0.5);
+                Position = UDim2.new(0, 6, 0, 0.5);
+                Size = UDim2.new(0, 16, 0, 16);
                 BackgroundTransparency = 1;
                 Image = IconData.Url;
                 ImageColor3 = IconData.Custom and Library.FontColor or Library.AccentColor;
@@ -3149,9 +3149,10 @@ function Library:CreateWindow(...)
         end
 
         local TabButtonLabel = Library:CreateLabel({
-            Position = UDim2.new(0, 0, 0, 0);
-            Size = UDim2.new(1, IconData and (-IconWidth) or 0, 1, -1);
+            Position = UDim2.new(0, IconData and IconWidth or 0, 0, 0);
+            Size = UDim2.new(1, IconData and (-IconWidth) or 0, 1, 0);
             Text = Name;
+            TextYAlignment = Enum.TextYAlignment.Center;
             ZIndex = 1;
             Parent = TabButton;
         });
