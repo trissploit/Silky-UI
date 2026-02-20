@@ -263,26 +263,33 @@ end
 function Library:OnHighlight(HighlightInstance, Instance, Properties, PropertiesDefault)
     HighlightInstance.MouseEnter:Connect(function()
         local Reg = Library.RegistryMap[Instance];
-
+        -- build target table for tween
+        local goals = {}
         for Property, ColorIdx in next, Properties do
-            Instance[Property] = Library[ColorIdx] or ColorIdx;
-
+            local value = Library[ColorIdx] or ColorIdx
+            goals[Property] = value
             if Reg and Reg.Properties[Property] then
                 Reg.Properties[Property] = ColorIdx;
             end;
         end;
+        if next(goals) then
+            TweenService:Create(Instance, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goals):Play()
+        end
     end)
 
     HighlightInstance.MouseLeave:Connect(function()
         local Reg = Library.RegistryMap[Instance];
-
+        local goals = {}
         for Property, ColorIdx in next, PropertiesDefault do
-            Instance[Property] = Library[ColorIdx] or ColorIdx;
-
+            local value = Library[ColorIdx] or ColorIdx
+            goals[Property] = value
             if Reg and Reg.Properties[Property] then
                 Reg.Properties[Property] = ColorIdx;
             end;
         end;
+        if next(goals) then
+            TweenService:Create(Instance, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goals):Play()
+        end
     end)
 end;
 
@@ -2316,7 +2323,7 @@ do
 
         -- slim centered track (pill appearance)
         local Track = Library:Create('Frame', {
-            BackgroundColor3 = Library.MainColor;
+            BackgroundColor3 = Library:GetDarkerColor(Library.MainColor);
             BorderSizePixel = 0;
             Position = UDim2.new(0, 4, 0.5, -3); -- small vertical center offset
             Size = UDim2.new(1, -8, 0, 6); -- thin track
@@ -2324,7 +2331,7 @@ do
             Parent = SliderInner;
         });
         Library:ApplyCornerRadius(Library:AddUICorner(Track, 100), 100);
-        Library:AddToRegistry(Track, { BackgroundColor3 = 'MainColor' });
+        Library:AddToRegistry(Track, { BackgroundColor3 = 'OutlineColor' });
 
         -- fill goes inside the thin track (width is measured from Track.AbsoluteSize.X)
         local Fill = Library:Create('Frame', {
@@ -2449,14 +2456,14 @@ do
 
             local trackW = (Track and Track.AbsoluteSize and Track.AbsoluteSize.X) or Slider.MaxSize;
             local X = math.ceil(Library:MapValue(Slider.Value, Slider.Min, Slider.Max, 0, trackW));
-            Fill.Size = UDim2.new(0, X, 1, 0);
+            -- animate fill width
+            TweenService:Create(Fill, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Size = UDim2.new(0, X, 1, 0)}):Play()
 
             -- position circular knob (slide handle)
             if Slider._SlideCircle and Slider._KnobSize then
                 local knobW = Slider._KnobSize
-                -- keep knob centered on fill end; clamp so knob never leaves track
                 local knobX = math.clamp(X - (knobW / 2), 0, math.max(0, trackW - (knobW / 2)))
-                Slider._SlideCircle.Position = UDim2.new(0, knobX, 0.5, 0)
+                TweenService:Create(Slider._SlideCircle, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = UDim2.new(0, knobX, 0.5, 0)}):Play()
             end
 
             HideBorderRight.Visible = not (X == trackW or X == 0);
@@ -3660,18 +3667,6 @@ function Library:CreateWindow(...)
                 BackgroundColor3 = 'BackgroundColor';
             });
 
-            local Highlight = Library:Create('Frame', {
-                BackgroundColor3 = Library.AccentColor;
-                BorderSizePixel = 0;
-                Size = UDim2.new(1, 0, 0, 2);
-                ZIndex = 5;
-                Parent = BoxInner;
-            });
-
-            Library:AddToRegistry(Highlight, {
-                BackgroundColor3 = 'AccentColor';
-            });
-
             local GroupboxLabel = Library:CreateLabel({
                 Size = UDim2.new(1, 0, 0, 18);
                 Position = UDim2.new(0, 4, 0, 2);
@@ -3762,18 +3757,6 @@ function Library:CreateWindow(...)
 
             Library:AddToRegistry(BoxInner, {
                 BackgroundColor3 = 'BackgroundColor';
-            });
-
-            local Highlight = Library:Create('Frame', {
-                BackgroundColor3 = Library.AccentColor;
-                BorderSizePixel = 0;
-                Size = UDim2.new(1, 0, 0, 2);
-                ZIndex = 10;
-                Parent = BoxInner;
-            });
-
-            Library:AddToRegistry(Highlight, {
-                BackgroundColor3 = 'AccentColor';
             });
 
             local TabboxButtons = Library:Create('Frame', {
