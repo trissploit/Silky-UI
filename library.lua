@@ -3111,14 +3111,13 @@ function Library:CreateWindow(...)
         local TabButtonWidth = Library:GetTextBounds(Name, Library.Font, 16);
         local IconWidth = 0
         if IconData then
-            IconWidth = 24 + 6 -- icon + spacing (keeps behavior similar to uilib)
+            IconWidth = 16 + 6 -- icon (16px) + spacing
         end
 
-        -- create tab button (size will be computed by UpdateTabWidth)
         local TabButton = Library:Create('Frame', {
             BackgroundColor3 = Library.BackgroundColor;
             BorderColor3 = Library.OutlineColor;
-            Size = UDim2.new(0, 96, 1, 0);
+            Size = UDim2.new(0, TabButtonWidth + IconWidth + 8 + 4, 1, 0);
             ZIndex = 1;
             Parent = TabArea;
         });
@@ -3128,30 +3127,20 @@ function Library:CreateWindow(...)
             BorderColor3 = 'OutlineColor';
         });
 
-        -- use a UIListLayout so label+icon are centered as a group
-        Library:Create('UIListLayout', {
-            FillDirection = Enum.FillDirection.Horizontal;
-            HorizontalAlignment = Enum.HorizontalAlignment.Center;
-            VerticalAlignment = Enum.VerticalAlignment.Center;
-            Padding = UDim.new(0, 6);
-            Parent = TabButton;
-        });
-
-        -- label (created first so icon appears to the right)
+        -- icon (if provided)
         local TabButtonLabel = Library:CreateLabel({
-            Size = UDim2.new(0, TabButtonWidth, 1, 0);
+            Position = UDim2.new(0, 6, 0, 0);
+            Size = UDim2.new(1, IconData and (-IconWidth) or 0, 1, -1);
             Text = Name;
-            TextXAlignment = Enum.TextXAlignment.Left;
-            TextYAlignment = Enum.TextYAlignment.Center;
             ZIndex = 1;
             Parent = TabButton;
         });
 
-        -- icon (if provided) — created after label so it sits on the right
-        local TabIcon
         if IconData then
-            TabIcon = Library:Create('ImageLabel', {
-                Size = UDim2.fromOffset(24, 24);
+            local TabIcon = Library:Create('ImageLabel', {
+                AnchorPoint = Vector2.new(1, 0.5);
+                Position = UDim2.new(1, -6, 0.5, 0);
+                Size = UDim2.new(0, 16, 0, 16);
                 BackgroundTransparency = 1;
                 Image = IconData.Url;
                 ImageColor3 = IconData.Custom and Library.FontColor or Library.AccentColor;
@@ -3166,21 +3155,6 @@ function Library:CreateWindow(...)
                 ImageColor3 = IconData.Custom and 'FontColor' or 'AccentColor';
             });
         end
-
-        -- recalculate button width so children never overflow / overlap
-        local function UpdateTabWidth()
-            local textWidth = Library:GetTextBounds(Name, Library.Font, 16)
-            local iconWidth = 0
-            if TabIcon then iconWidth = 24 + 6 end -- icon + spacing
-
-            local paddingWidth = 12 * 2 -- left + right padding
-            local spacingWidth = TabIcon and 6 or 0 -- gap between icon and text
-
-            local targetWidth = math.max(96, textWidth + iconWidth + paddingWidth + spacingWidth)
-            TabButton.Size = UDim2.new(0, math.ceil(targetWidth), 1, 0)
-        end
-
-        UpdateTabWidth()
 
         local Blocker = Library:Create('Frame', {
             BackgroundColor3 = Library.MainColor;
