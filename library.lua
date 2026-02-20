@@ -145,6 +145,17 @@ function Library:ApplyTextStroke(Inst)
     });
 end;
 
+-- load lucide icons (optional) and expose Library:GetIcon() like uilib.lua
+local _fetchLucide, _lucideIcons = pcall(function()
+    return (loadstring(game:HttpGet('https://raw.githubusercontent.com/deividcomsono/lucide-roblox-direct/refs/heads/main/source.lua'))())
+end)
+function Library:GetIcon(Name)
+    if not _fetchLucide then return end
+    local ok, icon = pcall(_lucideIcons.GetAsset, Name)
+    if not ok then return end
+    return icon
+end
+
 function Library:CreateLabel(Properties, IsHud)
     local _Instance = Library:Create('TextLabel', {
         BackgroundTransparency = 1;
@@ -321,24 +332,15 @@ Library.AccentColorDark = Library:GetDarkerColor(Library.AccentColor);
 function Library:AddUICorner(Parent, RadiusOverride)
     local r = RadiusOverride or Library.CornerRadius;
     if r and r > 0 then
-        local c = Instance.new('UICorner', Parent);
-        -- store per-instance override (if provided) so ApplyCornerRadius can respect it
-        if RadiusOverride and type(RadiusOverride) == 'number' and c.SetAttribute then
-            c:SetAttribute('RadiusOverride', RadiusOverride)
-        end
-        return c;
+        return Instance.new('UICorner', Parent);
     end;
     return nil;
 end;
 
-function Library:ApplyCornerRadius(Corner)
+function Library:ApplyCornerRadius(Corner, RadiusOverride)
     if Corner then
-        local override = (Corner.GetAttribute and Corner:GetAttribute('RadiusOverride')) or nil
-        if override and type(override) == 'number' then
-            Corner.CornerRadius = UDim.new(0, override);
-        else
-            Corner.CornerRadius = UDim.new(0, Library.CornerRadius);
-        end
+        local r = (type(RadiusOverride) == 'number' and RadiusOverride) or Library.CornerRadius
+        Corner.CornerRadius = UDim.new(0, r);
     end;
 end;
 
@@ -697,185 +699,16 @@ do
             });
         end;
 
-        -- Gradient editor (ported from uLib) ----------------------------------------
-        local GradientHolder, GradientBar, GradientUI, DotsContainer, PlusButton
-        local GradientStops = {}
-        local SelectedStop = nil
-
-        local function UpdateGradientRender()
-            if not GradientUI then return end
-
-            table.sort(GradientStops, function(a,b) return (tonumber(a and a.pos) or 0) < (tonumber(b and b.pos) or 0) end)
-
-            local stops = {}
-            for i, s in ipairs(GradientStops) do
-                local pos = math.clamp(tonumber(s and s.pos) or 0, 0, 1)
-                local col = (s and s.color) or Color3.new(1,1,1)
-                local transp = math.clamp(tonumber(s and s.transparency) or 0, 0, 1)
-                table.insert(stops, { pos = pos, color = col, transp = transp })
-            end
-
-            if #stops == 0 then
-                stops = { { pos = 0, color = ColorPicker.Value, transp = 0 }, { pos = 1, color = ColorPicker.Value, transp = 0 } }
-            elseif #stops == 1 then
-                local s = stops[1]
-                stops = { { pos = 0, color = s.color, transp = s.transp }, { pos = 1, color = s.color, transp = s.transp } }
-            else
-                if stops[1].pos > 0 then
-                    table.insert(stops, 1, { pos = 0, color = stops[1].color, transp = stops[1].transp })
-                end
-                if stops[#stops].pos < 1 then
-                    table.insert(stops, { pos = 1, color = stops[#stops].color, transp = stops[#stops].transp })
-                end
-            end
-
-            local keypoints = {}
-            local tpoints = {}
-            for _, s in ipairs(stops) do
-                table.insert(keypoints, ColorSequenceKeypoint.new(s.pos, s.color))
-                table.insert(tpoints, NumberSequenceKeypoint.new(s.pos, s.transp))
-            end
-
-            GradientUI.Color = ColorSequence.new(keypoints)
-            GradientUI.Transparency = NumberSequence.new(tpoints)
-
-            pcall(function()
-                if GradientOverlay and GradientOverlay.Parent then
-                    GradientOverlay.Color = GradientUI.Color
-                    GradientOverlay.Transparency = GradientUI.Transparency
-                end
-            end)
-
-            for _, s in ipairs(GradientStops) do
-                if s and s.dot and s.dot.Parent then
-                    pcall(function()
-                        s.dot.Position = UDim2.new(math.clamp(tonumber(s.pos) or 0, 0, 1), 0, 0.5, 0)
-                        if s.color then
-                            s.dot.BackgroundColor3 = s.color
-                            s.dot.BorderColor3 = Library:GetDarkerColor(s.color)
-                        end
-                        if s.outline then
-                            s.outline.Transparency = (s == SelectedStop) and 0 or 1
-                        else
-                            local stroke = s.dot:FindFirstChildOfClass("UIStroke")
-                            if stroke then
-                                stroke.Transparency = (s == SelectedStop) and 0 or 1
-                            end
-                        end
-                    end)
-                end
-            end
-        end
-
-        local function CreateDot(stop)
-            local Dot = Library:Create('ImageButton', {
-                Size = UDim2.fromOffset(14, 14),
-                AnchorPoint = Vector2.new(0.5, 0.5),
-                BackgroundColor3 = stop and (stop.color or Color3.new(1,1,1)) or Color3.new(1,1,1),
-                BorderColor3 = Library:GetDarkerColor((stop and stop.color) or Color3.new(1,1,1)),
-                Position = UDim2.new(math.clamp(tonumber(stop and stop.pos) or 0, 0, 1), 0, 0.5, 0),
-                AutoButtonColor = false,
-                Parent = DotsContainer,
-            })
-            Library:ApplyCornerRadius(Library:AddUICorner(Dot));
-            local SmallStroke = Library:Create('UIStroke', { Color = Library.BackgroundColor, Thickness = 1, Transparency = 0, Parent = Dot })
-            Library:AddToRegistry(SmallStroke, { Color = 'BackgroundColor' })
-            local OutlineStroke = Library:Create('UIStroke', { Color = Library.AccentColor, Thickness = 2, Transparency = 1, Parent = Dot })
-            Library:AddToRegistry(OutlineStroke, { Color = 'AccentColor' })
-
-            stop.dot = Dot
-            stop.outline = OutlineStroke
-
-            Dot.MouseButton1Click:Connect(function()
-                SelectedStop = stop
-                ColorPicker:SetValueRGB(stop.color or Color3.new(1,1,1), stop.transparency or 0)
-                UpdateGradientRender()
-                pcall(function() if PickerFrameOuter then PickerFrameOuter.Visible = true end end)
-            end)
-
-            Dot.InputBegan:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-                        local MinX = GradientBar.AbsolutePosition.X
-                        local MaxX = MinX + GradientBar.AbsoluteSize.X
-                        if MaxX - MinX <= 0 then break end
-                        local mouseX = (Mouse and Mouse.X) and Mouse.X or 0
-                        local PosX = math.clamp(mouseX, MinX, MaxX)
-                        stop.pos = (PosX - MinX) / (MaxX - MinX)
-                        UpdateGradientRender()
-                        RenderStepped:Wait()
-                    end
-                end
-            end)
-
-            return Dot
-        end
-
-        local function AddGradientStop(pos, color, transparency)
-            local p = math.clamp(tonumber(pos) or 0.5, 0, 1)
-            local col = color or ColorPicker.Value
-            local transp = math.clamp(tonumber(transparency) or ColorPicker.Transparency or 0, 0, 1)
-            local stop = { pos = p, color = col, transparency = transp }
-            table.insert(GradientStops, stop)
-            if DotsContainer then
-                pcall(function() CreateDot(stop) end)
-            end
-            UpdateGradientRender()
-            return stop
-        end
-
-        if Info.Gradient then
-            GradientHolder = Library:Create('Frame', {
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 28),
-                ZIndex = 19,
-                Parent = PickerFrameInner,
-            })
-
-            GradientBar = Library:Create('Frame', {
-                BackgroundColor3 = Library.MainColor,
-                BorderColor3 = Library.OutlineColor,
-                BorderSizePixel = 0,
-                Position = UDim2.fromOffset(4, 4),
-                Size = UDim2.new(1, -48, 0, 20),
-                Parent = GradientHolder,
-            })
-            Library:ApplyCornerRadius(Library:AddUICorner(GradientBar, 10))
-
-            GradientUI = Library:Create('UIGradient', {
-                Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, ColorPicker.Value), ColorSequenceKeypoint.new(1, ColorPicker.GradientColor) }),
-                Parent = GradientBar,
-            })
-
-            DotsContainer = Library:Create('Frame', {
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 1, 0),
-                Parent = GradientBar,
-            })
-
-            PlusButton = Library:Create('TextButton', {
-                Text = "+",
-                Size = UDim2.new(0, 36, 0, 20),
-                Position = UDim2.new(1, -36, 0, 4),
-                BackgroundColor3 = Library.MainColor,
-                BorderColor3 = Library.OutlineColor,
-                Parent = GradientHolder,
-            })
-            Library:ApplyCornerRadius(Library:AddUICorner(PlusButton))
-            Library:AddToRegistry(PlusButton, { BackgroundColor3 = 'MainColor', BorderColor3 = 'OutlineColor' })
-
-            PlusButton.MouseButton1Click:Connect(function()
-                AddGradientStop(0.5, ColorPicker.Value, ColorPicker.Transparency)
-            end)
-
-            -- seed with two stops for a smooth default
-            AddGradientStop(0, ColorPicker.Value, 0)
-            AddGradientStop(1, ColorPicker.GradientColor, 0)
-        end
-
-        -- end of gradient editor -----------------------------------------------
-
         local DisplayLabel = Library:CreateLabel({
+            Size = UDim2.new(1, 0, 0, 14);
+            Position = UDim2.fromOffset(5, 5);
+            TextXAlignment = Enum.TextXAlignment.Left;
+            TextSize = 14;
+            Text = ColorPicker.Title,--Info.Default;
+            TextWrapped = false;
+            ZIndex = 16;
+            Parent = PickerFrameInner;
+        });
 
 
         local ContextMenu = {}
@@ -1005,6 +838,196 @@ do
 
         end
 
+        -- Gradient picker (ported from uilib.lua)
+        local GradientHolder, GradientBar, GradientUI, DotsContainer, PlusButton
+        local GradientStops = {}
+        local SelectedStop = nil
+
+        local function UpdateGradientRender()
+            if not GradientUI then return end
+
+            table.sort(GradientStops, function(a, b) return (tonumber(a and a.pos) or 0) < (tonumber(b and b.pos) or 0) end)
+
+            local stops = {}
+            for i, s in ipairs(GradientStops) do
+                local pos = math.clamp(tonumber(s and s.pos) or 0, 0, 1)
+                local color = (s and s.color) or Color3.new(1, 1, 1)
+                local transp = math.clamp(tonumber(s and s.transparency) or 0, 0, 1)
+                table.insert(stops, { pos = pos, color = color, transp = transp })
+            end
+
+            if #stops == 0 then
+                stops = { { pos = 0, color = Color3.new(1,1,1), transp = 0 }, { pos = 1, color = Color3.new(1,1,1), transp = 0 } }
+            elseif #stops == 1 then
+                local s = stops[1]
+                stops = { { pos = 0, color = s.color, transp = s.transp }, { pos = 1, color = s.color, transp = s.transp } }
+            else
+                if stops[1].pos > 0 then
+                    table.insert(stops, 1, { pos = 0, color = stops[1].color, transp = stops[1].transp })
+                end
+                if stops[#stops].pos < 1 then
+                    table.insert(stops, { pos = 1, color = stops[#stops].color, transp = stops[#stops].transp })
+                end
+            end
+
+            local keypoints = {}
+            local tpoints = {}
+            for _, s in ipairs(stops) do
+                table.insert(keypoints, ColorSequenceKeypoint.new(s.pos, s.color))
+                table.insert(tpoints, NumberSequenceKeypoint.new(s.pos, s.transp))
+            end
+
+            GradientUI.Color = ColorSequence.new(keypoints)
+            GradientUI.Transparency = NumberSequence.new(tpoints)
+
+            pcall(function()
+                if GradientOverlay and GradientOverlay.Parent then
+                    GradientOverlay.Color = ColorSequence.new(keypoints)
+                    GradientOverlay.Transparency = NumberSequence.new(tpoints)
+                end
+            end)
+
+            for _, s in ipairs(GradientStops) do
+                if s and s.dot then
+                    local okPos = math.clamp(tonumber(s.pos) or 0, 0, 1)
+                    if s.dot.Parent then
+                        pcall(function()
+                            s.dot.Position = UDim2.new(okPos, 0, 0.5, 0)
+                            if s.color then
+                                s.dot.BackgroundColor3 = s.color
+                                s.dot.BorderColor3 = Library:GetDarkerColor(s.color)
+                            end
+                            if s.outline then
+                                s.outline.Transparency = (s == SelectedStop) and 0 or 1
+                            else
+                                local stroke = s.dot:FindFirstChildOfClass('UIStroke')
+                                if stroke then
+                                    stroke.Transparency = (s == SelectedStop) and 0 or 1
+                                end
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+
+        local function CreateDot(stop)
+            local Dot = Library:Create('ImageButton', {
+                Size = UDim2.fromOffset(14, 14),
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundColor3 = stop and stop.color or Color3.new(1,1,1),
+                BorderColor3 = Library:GetDarkerColor((stop and stop.color) or Color3.new(1,1,1)),
+                Position = UDim2.new(math.clamp(tonumber(stop and stop.pos) or 0, 0, 1), 0, 0.5, 0),
+                AutoButtonColor = false,
+                Parent = DotsContainer,
+            })
+
+            Library:ApplyCornerRadius(Library:AddUICorner(Dot));
+            local SmallStroke = Library:Create('UIStroke', { Color = Library.Black, Thickness = 1, Transparency = 0, Parent = Dot })
+            local OutlineStroke = Library:Create('UIStroke', { Color = Library.AccentColor, Thickness = 2, Transparency = 1, Parent = Dot })
+
+            stop.dot = Dot
+            stop.outline = OutlineStroke
+
+            Dot.MouseButton1Click:Connect(function()
+                pcall(function()
+                    SelectedStop = stop
+                    if ColorPicker and type(ColorPicker.SetValueRGB) == 'function' then
+                        ColorPicker:SetValueRGB(stop.color or Color3.new(1,1,1), stop.transparency or 0)
+                    end
+                    UpdateGradientRender()
+                end)
+            end)
+
+            Dot.InputBegan:Connect(function(Input)
+                pcall(function()
+                    while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+                        if not GradientBar then break end
+                        local MinX = GradientBar.AbsolutePosition.X
+                        local MaxX = MinX + GradientBar.AbsoluteSize.X
+                        if MaxX - MinX <= 0 then break end
+                        local mouseX = (Mouse and Mouse.X) and Mouse.X or 0
+                        local PosX = math.clamp(mouseX, MinX, MaxX)
+                        stop.pos = (PosX - MinX) / (MaxX - MinX)
+                        UpdateGradientRender()
+                        RenderStepped:Wait()
+                    end
+                end)
+            end)
+
+            return Dot
+        end
+
+        local function AddGradientStop(pos, color, transparency)
+            local p = math.clamp(tonumber(pos) or 0.5, 0, 1)
+            local col = color or (ColorPicker and ColorPicker.Value) or Color3.new(1,1,1)
+            local transp = math.clamp(tonumber(transparency) or (ColorPicker and tonumber(ColorPicker.Transparency) or 0) or 0, 0, 1)
+            local stop = { pos = p, color = col, transparency = transp }
+            table.insert(GradientStops, stop)
+            if not DotsContainer and GradientBar then
+                DotsContainer = Library:Create('Frame', { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Parent = GradientBar })
+            end
+            if DotsContainer then
+                pcall(function() CreateDot(stop) end)
+            end
+            UpdateGradientRender()
+            SelectedStop = stop
+            Library:SafeCallback(ColorPicker.Callback, { Stops = GradientStops })
+        end
+
+        if Info.Gradient then
+            GradientHolder = Library:Create('Frame', { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 20), Parent = PickerFrameInner })
+            Library:Create('UIListLayout', { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), Parent = GradientHolder })
+
+            PlusButton = Library:Create('ImageButton', { Size = UDim2.fromOffset(12, 12), BackgroundTransparency = 1, AutoButtonColor = false, Parent = GradientHolder })
+
+            GradientBar = Library:Create('Frame', { BackgroundColor3 = Color3.new(1,1,1), Size = UDim2.new(1, -36, 0, 12), Parent = GradientHolder })
+            Library:ApplyCornerRadius(Library:AddUICorner(GradientBar));
+
+            GradientUI = Library:Create('UIGradient', { Parent = GradientBar })
+
+            -- show the gradient on the small holder preview as well
+            -- reuse existing GradientOverlay (if present)
+
+            DotsContainer = Library:Create('Frame', { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Parent = GradientBar })
+
+            local MinusButton = Library:Create('ImageButton', { Size = UDim2.fromOffset(12, 12), BackgroundTransparency = 1, AutoButtonColor = false, Parent = GradientHolder })
+
+            local PlusIcon = Library:GetIcon('plus')
+            if PlusIcon and PlusIcon.Url then
+                pcall(function() PlusButton.Image = PlusIcon.Url end)
+                if PlusIcon.ImageRectOffset then pcall(function() PlusButton.ImageRectOffset = PlusIcon.ImageRectOffset end) end
+                if PlusIcon.ImageRectSize then pcall(function() PlusButton.ImageRectSize = PlusIcon.ImageRectSize end) end
+            end
+            local MinusIcon = Library:GetIcon('minus')
+            if MinusIcon and MinusIcon.Url then
+                pcall(function() MinusButton.Image = MinusIcon.Url end)
+                if MinusIcon.ImageRectOffset then pcall(function() MinusButton.ImageRectOffset = MinusIcon.ImageRectOffset end) end
+                if MinusIcon.ImageRectSize then pcall(function() MinusButton.ImageRectSize = MinusIcon.ImageRectSize end) end
+            end
+
+            PlusButton.MouseButton1Click:Connect(function() pcall(function() AddGradientStop(0.5) end) end)
+            MinusButton.MouseButton1Click:Connect(function()
+                pcall(function()
+                    if not SelectedStop then return end
+                    if #GradientStops <= 1 then return end
+                    local idx = nil
+                    for i, s in ipairs(GradientStops) do if s == SelectedStop then idx = i break end end
+                    if idx then
+                        table.remove(GradientStops, idx)
+                        if SelectedStop.dot and SelectedStop.dot.Parent then pcall(function() SelectedStop.dot:Destroy() end) end
+                        SelectedStop = nil
+                        UpdateGradientRender()
+                        Library:SafeCallback(ColorPicker.Callback, { Stops = GradientStops })
+                    end
+                end)
+            end)
+
+            -- initialise with two stops (0 and 1)
+            AddGradientStop(0, ColorPicker.Value, ColorPicker.Transparency)
+            AddGradientStop(1, ColorPicker.GradientColor or ColorPicker.Value, 0)
+        end
+
         Library:AddToRegistry(PickerFrameInner, { BackgroundColor3 = 'BackgroundColor'; BorderColor3 = 'OutlineColor'; });
         Library:AddToRegistry(Highlight, { BackgroundColor3 = 'AccentColor'; });
         Library:AddToRegistry(SatVibMapInner, { BackgroundColor3 = 'BackgroundColor'; BorderColor3 = 'OutlineColor'; });
@@ -1058,19 +1081,13 @@ do
                 BorderColor3 = Library:GetDarkerColor(ColorPicker.Value);
             });
 
-            -- Update gradient overlay (uLib-style when available)
+            -- Update gradient overlay
             if ColorPicker.Gradient then
                 GradientOverlay.Enabled = true;
-                if GradientUI and GradientUI.Color then
-                    GradientOverlay.Color = GradientUI.Color;
-                    GradientOverlay.Transparency = GradientUI.Transparency or NumberSequence.new(0);
-                else
-                    GradientOverlay.Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, ColorPicker.Value),
-                        ColorSequenceKeypoint.new(1, ColorPicker.GradientColor),
-                    });
-                    GradientOverlay.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 0) });
-                end
+                GradientOverlay.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, ColorPicker.Value),
+                    ColorSequenceKeypoint.new(1, ColorPicker.GradientColor),
+                });
             else
                 GradientOverlay.Enabled = false;
             end;
@@ -1123,14 +1140,6 @@ do
         function ColorPicker:SetValueRGB(Color, Transparency)
             ColorPicker.Transparency = Transparency or 0;
             ColorPicker:SetHSVFromRGB(Color);
-
-            -- if editing a gradient stop, update the selected stop's color
-            if SelectedStop then
-                SelectedStop.color = Color
-                SelectedStop.transparency = ColorPicker.Transparency or 0
-                pcall(UpdateGradientRender)
-            end
-
             ColorPicker:Display();
         end;
 
@@ -1835,99 +1844,76 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
-        -- create a holder so the divider can include centered text if requested
         local Holder = Library:Create('Frame', {
-            BackgroundTransparency = 1;
-            Size = UDim2.new(1, 0, 0, 12);
-            ZIndex = 5;
-            Parent = Container;
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 12),
+            Parent = Container,
         })
 
-        if Text and type(Text) == 'string' then
+        if Text then
             local TextLabel = Library:CreateLabel({
-                Size = UDim2.new(1, 0, 0, 12);
-                TextSize = 14;
-                Text = Text;
-                TextTransparency = 0.5;
-                TextXAlignment = Enum.TextXAlignment.Center;
-                ZIndex = 5;
-                Parent = Holder;
-            });
+                AutomaticSize = Enum.AutomaticSize.X,
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 0),
+                Text = Text,
+                TextSize = 14,
+                TextTransparency = 0.5,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                Parent = Holder,
+            })
 
-            local TW = select(1, Library:GetTextBounds(Text, Library.Font, 14));
-            local SizeX = math.floor(TW / 2) + 10
+            local X, _ = Library:GetTextBounds(Text, Library.Font, 14)
+            local SizeX = X//2 + 10
 
             local LeftLine = Library:Create('Frame', {
-                AnchorPoint = Vector2.new(0, 0.5);
-                BackgroundColor3 = Library.AccentColor;
-                BorderSizePixel = 0;
-                Position = UDim2.fromScale(0, 0.5);
-                Size = UDim2.new(0.5, -SizeX, 0, 1);
-                ZIndex = 5;
-                Parent = Holder;
-            });
+                AnchorPoint = Vector2.new(0, 0.5),
+                BackgroundColor3 = Library.AccentColor,
+                BorderSizePixel = 0,
+                Position = UDim2.fromScale(0, 0.5),
+                Size = UDim2.new(0.5, -SizeX, 0, 1),
+                Parent = Holder,
+            })
 
             Library:Create('UIGradient', {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.AccentColor)),
-                    ColorSequenceKeypoint.new(1, Library.AccentColor),
-                });
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(1, 0),
-                }),
+                Color = ColorSequence.new({ Library.AccentColor, Library.AccentColor });
+                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) });
                 Parent = LeftLine,
-            });
+            })
 
             local RightLine = Library:Create('Frame', {
-                AnchorPoint = Vector2.new(1, 0.5);
-                BackgroundColor3 = Library.AccentColor;
-                BorderSizePixel = 0;
-                Position = UDim2.fromScale(1, 0.5);
-                Size = UDim2.new(0.5, -SizeX, 0, 1);
-                ZIndex = 5;
-                Parent = Holder;
-            });
+                AnchorPoint = Vector2.new(1, 0.5),
+                BackgroundColor3 = Library.AccentColor,
+                BorderSizePixel = 0,
+                Position = UDim2.fromScale(1, 0.5),
+                Size = UDim2.new(0.5, -SizeX, 0, 1),
+                Parent = Holder,
+            })
 
             Library:Create('UIGradient', {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Library.AccentColor),
-                    ColorSequenceKeypoint.new(1, Library:GetDarkerColor(Library.AccentColor)),
-                });
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 0),
-                    NumberSequenceKeypoint.new(1, 1),
-                }),
+                Color = ColorSequence.new({ Library.AccentColor, Library.AccentColor });
+                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) });
                 Parent = RightLine,
-            });
+            })
         else
             local Line = Library:Create('Frame', {
-                AnchorPoint = Vector2.new(0.5, 0.5);
-                BackgroundColor3 = Library.AccentColor;
-                BorderSizePixel = 0;
-                Position = UDim2.fromScale(0.5, 0.5);
-                Size = UDim2.new(1, 0, 0, 1);
-                ZIndex = 5;
-                Parent = Holder;
-            });
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundColor3 = Library.AccentColor,
+                BorderSizePixel = 0,
+                Position = UDim2.fromScale(0.5, 0.5),
+                Size = UDim2.new(1, 0, 0, 1),
+                Parent = Holder,
+            })
 
             Library:Create('UIGradient', {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.AccentColor)),
-                    ColorSequenceKeypoint.new(0.5, Library.AccentColor),
-                    ColorSequenceKeypoint.new(1, Library:GetDarkerColor(Library.AccentColor)),
-                });
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(0.5, 0),
-                    NumberSequenceKeypoint.new(1, 1),
-                }),
+                Color = ColorSequence.new({ Library.AccentColor, Library.AccentColor });
+                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1) });
                 Parent = Line,
-            });
+            })
         end
 
-        Groupbox:AddBlank(9);
-        Groupbox:Resize();
+        Groupbox:Resize()
+
+        table.insert(Groupbox.Elements, { Holder = Holder, Type = 'Divider' })
     end
 
     function Funcs:AddInput(Idx, Info)
@@ -2295,16 +2281,17 @@ do
             Groupbox:AddBlank(3);
         end
 
+        -- pill-style slider (taller + fully rounded corners)
         local SliderOuter = Library:Create('Frame', {
             BackgroundColor3 = Color3.new(0, 0, 0);
             BorderColor3 = Color3.new(0, 0, 0);
-            Size = UDim2.new(1, -4, 0, 13);
+            Size = UDim2.new(1, -4, 0, 16); -- slightly taller for pill appearance
             ZIndex = 5;
             Parent = Container;
         });
 
-        -- pill-style rounding (override default CornerRadius for this element)
-        Library:ApplyCornerRadius(Library:AddUICorner(SliderOuter, 7));
+        -- force a large corner radius for a pill look (override)
+        Library:ApplyCornerRadius(Library:AddUICorner(SliderOuter, 100), 100);
 
         Library:AddToRegistry(SliderOuter, {
             BorderColor3 = 'Black';
@@ -2319,7 +2306,7 @@ do
             Parent = SliderOuter;
         });
 
-        Library:ApplyCornerRadius(Library:AddUICorner(SliderInner, 7));
+        Library:ApplyCornerRadius(Library:AddUICorner(SliderInner, 100), 100);
 
         Library:AddToRegistry(SliderInner, {
             BackgroundColor3 = 'MainColor';
@@ -2334,8 +2321,7 @@ do
             Parent = SliderInner;
         });
 
-        -- rounded fill so the progress looks like a pill
-        Library:ApplyCornerRadius(Library:AddUICorner(Fill, 7));
+        Library:ApplyCornerRadius(Library:AddUICorner(Fill, 100), 100);
 
         Library:AddToRegistry(Fill, {
             BackgroundColor3 = 'AccentColor';
@@ -2359,6 +2345,7 @@ do
             Size = UDim2.new(1, 0, 1, 0);
             TextSize = 14;
             Text = 'Infinite';
+            TextYAlignment = Enum.TextYAlignment.Center; -- vertically center label inside pill
             ZIndex = 9;
             Parent = SliderInner;
         });
@@ -2559,10 +2546,19 @@ do
             BackgroundTransparency = 1;
             Position = UDim2.new(1, -16, 0.5, 0);
             Size = UDim2.new(0, 12, 0, 12);
-            Image = 'http://www.roblox.com/asset/?id=6282522798';
             ZIndex = 8;
             Parent = DropdownInner;
         });
+        do
+            local _icon = Library:GetIcon('chevron-up')
+            if _icon and _icon.Url then
+                pcall(function() DropdownArrow.Image = _icon.Url end)
+                if _icon.ImageRectOffset then pcall(function() DropdownArrow.ImageRectOffset = _icon.ImageRectOffset end) end
+                if _icon.ImageRectSize then pcall(function() DropdownArrow.ImageRectSize = _icon.ImageRectSize end) end
+            else
+                DropdownArrow.Image = 'http://www.roblox.com/asset/?id=6282522798'
+            end
+        end
 
         local ItemList = Library:CreateLabel({
             Position = UDim2.new(0, 5, 0, 0);
@@ -3089,7 +3085,7 @@ do
 
     local KeybindOuter = Library:Create('Frame', {
         AnchorPoint = Vector2.new(0, 0.5);
-        BorderColor3 = Color3.new(0, 0, 0);
+        BorderSizePixel = 0;
         Position = UDim2.new(0, 10, 0.5, 0);
         Size = UDim2.new(0, 210, 0, 20);
         Visible = false;
@@ -3101,8 +3097,7 @@ do
 
     local KeybindInner = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
-        BorderColor3 = Library.OutlineColor;
-        BorderMode = Enum.BorderMode.Inset;
+        BorderSizePixel = 0;
         Size = UDim2.new(1, 0, 1, 0);
         ZIndex = 101;
         Parent = KeybindOuter;
@@ -3112,7 +3107,6 @@ do
 
     Library:AddToRegistry(KeybindInner, {
         BackgroundColor3 = 'MainColor';
-        BorderColor3 = 'OutlineColor';
     }, true);
 
     local ColorFrame = Library:Create('Frame', {
@@ -3435,6 +3429,11 @@ function Library:CreateWindow(...)
             BorderColor3 = 'OutlineColor';
         });
 
+        -- accent outline (shows when tab is selected)
+        local TabOutline = Library:Create('UIStroke', { Color = Library.AccentColor, Thickness = 2, Parent = TabButton })
+        TabOutline.Transparency = 1
+        Library:AddToRegistry(TabOutline, { Color = 'AccentColor' })
+
         local TabButtonLabel = Library:CreateLabel({
             Position = UDim2.new(0, 0, 0, 0);
             Size = UDim2.new(1, 0, 1, -1);
@@ -3523,18 +3522,18 @@ function Library:CreateWindow(...)
 
             Blocker.BackgroundTransparency = 0;
             TabButton.BackgroundColor3 = Library.MainColor;
-            TabButton.BorderColor3 = Library.AccentColor;
             Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'MainColor';
-            Library.RegistryMap[TabButton].Properties.BorderColor3 = 'AccentColor';
+            -- reveal accent outline for selected tab
+            pcall(function() if TabOutline then TabOutline.Transparency = 0 end end)
             TabFrame.Visible = true;
         end;
 
         function Tab:HideTab()
             Blocker.BackgroundTransparency = 1;
             TabButton.BackgroundColor3 = Library.BackgroundColor;
-            TabButton.BorderColor3 = Library.OutlineColor;
             Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'BackgroundColor';
-            Library.RegistryMap[TabButton].Properties.BorderColor3 = 'OutlineColor';
+            -- hide accent outline
+            pcall(function() if TabOutline then TabOutline.Transparency = 1 end end)
             TabFrame.Visible = false;
         end;
 
