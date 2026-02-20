@@ -2314,12 +2314,25 @@ do
             BorderColor3 = 'OutlineColor';
         });
 
+        -- slim centered track (pill appearance)
+        local Track = Library:Create('Frame', {
+            BackgroundColor3 = Library.MainColor;
+            BorderSizePixel = 0;
+            Position = UDim2.new(0, 4, 0.5, -3); -- small vertical center offset
+            Size = UDim2.new(1, -8, 0, 6); -- thin track
+            ZIndex = 6;
+            Parent = SliderInner;
+        });
+        Library:ApplyCornerRadius(Library:AddUICorner(Track, 100), 100);
+        Library:AddToRegistry(Track, { BackgroundColor3 = 'MainColor' });
+
+        -- fill goes inside the thin track (width is measured from Track.AbsoluteSize.X)
         local Fill = Library:Create('Frame', {
             BackgroundColor3 = Library.AccentColor;
             BorderColor3 = Library.AccentColorDark;
             Size = UDim2.new(0, 0, 1, 0);
             ZIndex = 7;
-            Parent = SliderInner;
+            Parent = Track;
         });
 
         Library:ApplyCornerRadius(Library:AddUICorner(Fill, 100), 100);
@@ -2342,6 +2355,59 @@ do
             BackgroundColor3 = 'AccentColor';
         });
 
+        -- expose track so slider math can use its true pixel width
+        Slider._Track = Track
+
+        -- create circular knob for the pill slider
+        local _knobSize = 12
+        local SlideCircle = Library:Create('ImageButton', {
+            BackgroundTransparency = 1;
+            Size = UDim2.new(0, _knobSize, 0, _knobSize);
+            Position = UDim2.new(0, 0, 0.5, 0);
+            AnchorPoint = Vector2.new(0, 0.5);
+            ZIndex = 9;
+            AutoButtonColor = false;
+            Image = 'rbxassetid://3570695787';
+            ImageColor3 = Library.AccentColor;
+            Parent = SliderInner;
+        });
+
+        -- rounded knob corner and expose for Display/UpdateColors
+        local _knobCorner = Library:AddUICorner(SlideCircle, _knobSize/2)
+        Library:ApplyCornerRadius(_knobCorner, _knobSize/2)
+        Slider._SlideCircle = SlideCircle
+        Slider._KnobSize = _knobSize
+
+        -- dragging directly from knob (mirrors SliderInner dragging)
+        SlideCircle.InputBegan:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
+                local mPos = Mouse.X;
+                local gPos = Fill.Size.X.Offset;
+                local Diff = mPos - (Fill.AbsolutePosition.X + gPos);
+
+                while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+                    local nMPos = Mouse.X;
+                    local trackW = (Track and Track.AbsoluteSize and Track.AbsoluteSize.X) or Slider.MaxSize;
+                    local nX = math.clamp(gPos + (nMPos - mPos) + Diff, 0, trackW);
+
+                    local nValue = Slider:GetValueFromXOffset(nX);
+                    local OldValue = Slider.Value;
+                    Slider.Value = nValue;
+
+                    Slider:Display();
+
+                    if nValue ~= OldValue then
+                        Library:SafeCallback(Slider.Callback, Slider.Value);
+                        Library:SafeCallback(Slider.Changed, Slider.Value);
+                    end;
+
+                    RenderStepped:Wait();
+                end;
+
+                Library:AttemptSave();
+            end;
+        end);
+
         local DisplayLabel = Library:CreateLabel({
             Size = UDim2.new(1, 0, 1, 0);
             TextSize = 14;
@@ -2363,6 +2429,11 @@ do
         function Slider:UpdateColors()
             Fill.BackgroundColor3 = Library.AccentColor;
             Fill.BorderColor3 = Library.AccentColorDark;
+
+            -- update knob color if present
+            if Slider._SlideCircle and Slider._SlideCircle.Parent then
+                pcall(function() Slider._SlideCircle.ImageColor3 = Library.AccentColor end)
+            end
         end;
 
         function Slider:Display()
@@ -2376,10 +2447,19 @@ do
                 DisplayLabel.Text = string.format('%s/%s', Slider.Value .. Suffix, Slider.Max .. Suffix);
             end
 
-            local X = math.ceil(Library:MapValue(Slider.Value, Slider.Min, Slider.Max, 0, Slider.MaxSize));
+            local trackW = (Track and Track.AbsoluteSize and Track.AbsoluteSize.X) or Slider.MaxSize;
+            local X = math.ceil(Library:MapValue(Slider.Value, Slider.Min, Slider.Max, 0, trackW));
             Fill.Size = UDim2.new(0, X, 1, 0);
 
-            HideBorderRight.Visible = not (X == Slider.MaxSize or X == 0);
+            -- position circular knob (slide handle)
+            if Slider._SlideCircle and Slider._KnobSize then
+                local knobW = Slider._KnobSize
+                -- keep knob centered on fill end; clamp so knob never leaves track
+                local knobX = math.clamp(X - (knobW / 2), 0, math.max(0, trackW - (knobW / 2)))
+                Slider._SlideCircle.Position = UDim2.new(0, knobX, 0.5, 0)
+            end
+
+            HideBorderRight.Visible = not (X == trackW or X == 0);
         end;
 
         function Slider:OnChanged(Func)
@@ -2397,7 +2477,8 @@ do
         end;
 
         function Slider:GetValueFromXOffset(X)
-            return Round(Library:MapValue(X, 0, Slider.MaxSize, Slider.Min, Slider.Max));
+            local trackW = (Track and Track.AbsoluteSize and Track.AbsoluteSize.X) or Slider.MaxSize;
+            return Round(Library:MapValue(X, 0, trackW, Slider.Min, Slider.Max));
         end;
 
         function Slider:SetValue(Str)
@@ -2424,7 +2505,8 @@ do
 
                 while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
                     local nMPos = Mouse.X;
-                    local nX = math.clamp(gPos + (nMPos - mPos) + Diff, 0, Slider.MaxSize);
+                    local trackW = (Track and Track.AbsoluteSize and Track.AbsoluteSize.X) or Slider.MaxSize;
+                    local nX = math.clamp(gPos + (nMPos - mPos) + Diff, 0, trackW);
 
                     local nValue = Slider:GetValueFromXOffset(nX);
                     local OldValue = Slider.Value;
