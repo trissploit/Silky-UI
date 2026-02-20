@@ -3114,10 +3114,11 @@ function Library:CreateWindow(...)
             IconWidth = 24 + 6 -- icon + spacing (keeps behavior similar to uilib)
         end
 
+        -- create tab button (size will be computed by UpdateTabWidth)
         local TabButton = Library:Create('Frame', {
             BackgroundColor3 = Library.BackgroundColor;
             BorderColor3 = Library.OutlineColor;
-            Size = UDim2.new(0, TabButtonWidth + IconWidth + 8 + 4, 1, 0);
+            Size = UDim2.new(0, 96, 1, 0);
             ZIndex = 1;
             Parent = TabArea;
         });
@@ -3138,17 +3139,19 @@ function Library:CreateWindow(...)
 
         -- label (created first so icon appears to the right)
         local TabButtonLabel = Library:CreateLabel({
-            Size = UDim2.new(0, TabButtonWidth, 1, -1);
+            Size = UDim2.new(0, TabButtonWidth, 1, 0);
             Text = Name;
             TextXAlignment = Enum.TextXAlignment.Left;
+            TextYAlignment = Enum.TextYAlignment.Center;
             ZIndex = 1;
             Parent = TabButton;
         });
 
         -- icon (if provided) — created after label so it sits on the right
+        local TabIcon
         if IconData then
-            local TabIcon = Library:Create('ImageLabel', {
-                Size = UDim2.fromOffset(16, 16);
+            TabIcon = Library:Create('ImageLabel', {
+                Size = UDim2.fromOffset(24, 24);
                 BackgroundTransparency = 1;
                 Image = IconData.Url;
                 ImageColor3 = IconData.Custom and Library.FontColor or Library.AccentColor;
@@ -3163,6 +3166,21 @@ function Library:CreateWindow(...)
                 ImageColor3 = IconData.Custom and 'FontColor' or 'AccentColor';
             });
         end
+
+        -- recalculate button width so children never overflow / overlap
+        local function UpdateTabWidth()
+            local textWidth = Library:GetTextBounds(Name, Library.Font, 16)
+            local iconWidth = 0
+            if TabIcon then iconWidth = 24 + 6 end -- icon + spacing
+
+            local paddingWidth = 12 * 2 -- left + right padding
+            local spacingWidth = TabIcon and 6 or 0 -- gap between icon and text
+
+            local targetWidth = math.max(96, textWidth + iconWidth + paddingWidth + spacingWidth)
+            TabButton.Size = UDim2.new(0, math.ceil(targetWidth), 1, 0)
+        end
+
+        UpdateTabWidth()
 
         local Blocker = Library:Create('Frame', {
             BackgroundColor3 = Library.MainColor;
