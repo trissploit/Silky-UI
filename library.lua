@@ -1878,8 +1878,8 @@ do
                 Color = ColorSequence.new({
                     ColorSequenceKeypoint.new(0, Library.AccentColor),
                     ColorSequenceKeypoint.new(1, Library.AccentColor),
-                });
-                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) });
+                }),
+                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) }),
                 Parent = LeftLine,
             })
 
@@ -1896,8 +1896,8 @@ do
                 Color = ColorSequence.new({
                     ColorSequenceKeypoint.new(0, Library.AccentColor),
                     ColorSequenceKeypoint.new(1, Library.AccentColor),
-                });
-                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) });
+                }),
+                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }),
                 Parent = RightLine,
             })
         else
@@ -1914,8 +1914,8 @@ do
                 Color = ColorSequence.new({
                     ColorSequenceKeypoint.new(0, Library.AccentColor),
                     ColorSequenceKeypoint.new(1, Library.AccentColor),
-                });
-                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1) });
+                }),
+                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1) }),
                 Parent = Line,
             })
         end
