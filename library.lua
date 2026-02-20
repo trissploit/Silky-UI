@@ -3127,7 +3127,7 @@ function Library:CreateWindow(...)
             BorderColor3 = 'OutlineColor';
         });
 
-        -- layout so icon + text are centered and vertically aligned
+        -- use a UIListLayout so label+icon are centered as a group
         Library:Create('UIListLayout', {
             FillDirection = Enum.FillDirection.Horizontal;
             HorizontalAlignment = Enum.HorizontalAlignment.Center;
@@ -3136,11 +3136,20 @@ function Library:CreateWindow(...)
             Parent = TabButton;
         });
 
-        -- icon (if provided) — placed to the left of the label and vertically centered by UIListLayout
+        -- label (created first so icon appears to the right)
+        local TabButtonLabel = Library:CreateLabel({
+            Size = UDim2.new(0, TabButtonWidth, 1, -1);
+            Text = Name;
+            TextXAlignment = Enum.TextXAlignment.Left;
+            ZIndex = 1;
+            Parent = TabButton;
+        });
+
+        -- icon (if provided) — created after label so it sits on the right
         if IconData then
             local TabIcon = Library:Create('ImageLabel', {
+                Size = UDim2.fromOffset(16, 16);
                 BackgroundTransparency = 1;
-                Size = UDim2.new(0, 24, 0, 24);
                 Image = IconData.Url;
                 ImageColor3 = IconData.Custom and Library.FontColor or Library.AccentColor;
                 ImageRectOffset = IconData.ImageRectOffset;
@@ -3154,15 +3163,6 @@ function Library:CreateWindow(...)
                 ImageColor3 = IconData.Custom and 'FontColor' or 'AccentColor';
             });
         end
-
-        local _textW = Library:GetTextBounds(Name, Library.Font, 16);
-        local TabButtonLabel = Library:CreateLabel({
-            Size = UDim2.new(0, _textW, 1, 0);
-            Text = Name;
-            TextXAlignment = Enum.TextXAlignment.Left;
-            ZIndex = 1;
-            Parent = TabButton;
-        });
 
         local Blocker = Library:Create('Frame', {
             BackgroundColor3 = Library.MainColor;
