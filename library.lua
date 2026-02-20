@@ -39,6 +39,10 @@ local Library = {
     Black = Color3.new(0, 0, 0);
     Font = Enum.Font.Code,
 
+    -- UI configuration
+    ButtonGap = 3;           -- horizontal gap (px) between button-like elements
+    Roundness = 0;           -- corner radius (px) applied to GUI elements
+
     OpenedFrames = {};
     DependencyBoxes = {};
 
@@ -121,13 +125,27 @@ end;
 function Library:Create(Class, Properties)
     local _Instance = Class;
 
-    if type(Class) == 'string' then
+    local isClassString = type(Class) == 'string';
+    if isClassString then
         _Instance = Instance.new(Class);
     end;
 
     for Property, Value in next, Properties do
         _Instance[Property] = Value;
     end;
+
+    -- Automatically apply corner rounding when configured
+    if Library.Roundness and Library.Roundness > 0
+        and _Instance and type(_Instance.IsA) == 'function'
+        and _Instance:IsA('GuiObject')
+        and _Instance.ClassName ~= 'UICorner' then
+
+        if not _Instance:FindFirstChildOfClass('UICorner') then
+            local corner = Instance.new('UICorner')
+            corner.CornerRadius = UDim.new(0, Library.Roundness)
+            corner.Parent = _Instance
+        end
+    end
 
     return _Instance;
 end;
@@ -1371,7 +1389,7 @@ do
             TextLabel.Size = UDim2.new(1, -4, 0, Y)
         else
             Library:Create('UIListLayout', {
-                Padding = UDim.new(0, 4);
+                Padding = UDim.new(0, Library.ButtonGap);
                 FillDirection = Enum.FillDirection.Horizontal;
                 HorizontalAlignment = Enum.HorizontalAlignment.Right;
                 SortOrder = Enum.SortOrder.LayoutOrder;
@@ -1561,7 +1579,7 @@ do
 
             SubButton.Outer, SubButton.Inner, SubButton.Label = CreateBaseButton(SubButton)
 
-            SubButton.Outer.Position = UDim2.new(1, 3, 0, 0)
+            SubButton.Outer.Position = UDim2.new(1, Library.ButtonGap, 0, 0)
             SubButton.Outer.Size = UDim2.fromOffset(self.Outer.AbsoluteSize.X - 2, self.Outer.AbsoluteSize.Y)
             SubButton.Outer.Parent = self.Outer
 
@@ -1866,7 +1884,7 @@ do
         });
 
         Library:Create('UIListLayout', {
-            Padding = UDim.new(0, 4);
+            Padding = UDim.new(0, Library.ButtonGap);
             FillDirection = Enum.FillDirection.Horizontal;
             HorizontalAlignment = Enum.HorizontalAlignment.Right;
             SortOrder = Enum.SortOrder.LayoutOrder;
@@ -2947,6 +2965,10 @@ function Library:CreateWindow(...)
     if type(Config.TabPadding) ~= 'number' then Config.TabPadding = 0 end
     if type(Config.MenuFadeTime) ~= 'number' then Config.MenuFadeTime = 0.2 end
 
+    -- window-level roundness (pixels).
+    if type(Config.Roundness) ~= 'number' then Config.Roundness = Library.Roundness or 0 end
+    Library.Roundness = Config.Roundness
+
     if typeof(Config.Position) ~= 'UDim2' then Config.Position = UDim2.fromOffset(175, 50) end
     if typeof(Config.Size) ~= 'UDim2' then Config.Size = UDim2.fromOffset(550, 600) end
 
@@ -3034,7 +3056,7 @@ function Library:CreateWindow(...)
 
     local TabListLayout = Library:Create('UIListLayout', {
         -- keep any user-configured padding but add a default spacing so tabs aren't glued together
-        Padding = UDim.new(0, (Config.TabPadding or 0) + 8);
+        Padding = UDim.new(0, (Config.TabPadding or 0) + Library.ButtonGap);
         FillDirection = Enum.FillDirection.Horizontal;
         SortOrder = Enum.SortOrder.LayoutOrder;
         HorizontalAlignment = Enum.HorizontalAlignment.Center;
@@ -3340,6 +3362,7 @@ function Library:CreateWindow(...)
             });
 
             Library:Create('UIListLayout', {
+                Padding = UDim.new(0, Library.ButtonGap);
                 FillDirection = Enum.FillDirection.Horizontal;
                 HorizontalAlignment = Enum.HorizontalAlignment.Left;
                 SortOrder = Enum.SortOrder.LayoutOrder;
