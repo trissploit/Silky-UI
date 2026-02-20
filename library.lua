@@ -263,33 +263,26 @@ end
 function Library:OnHighlight(HighlightInstance, Instance, Properties, PropertiesDefault)
     HighlightInstance.MouseEnter:Connect(function()
         local Reg = Library.RegistryMap[Instance];
-        -- build target table for tween
-        local goals = {}
+
         for Property, ColorIdx in next, Properties do
-            local value = Library[ColorIdx] or ColorIdx
-            goals[Property] = value
+            Instance[Property] = Library[ColorIdx] or ColorIdx;
+
             if Reg and Reg.Properties[Property] then
                 Reg.Properties[Property] = ColorIdx;
             end;
         end;
-        if next(goals) then
-            TweenService:Create(Instance, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goals):Play()
-        end
     end)
 
     HighlightInstance.MouseLeave:Connect(function()
         local Reg = Library.RegistryMap[Instance];
-        local goals = {}
+
         for Property, ColorIdx in next, PropertiesDefault do
-            local value = Library[ColorIdx] or ColorIdx
-            goals[Property] = value
+            Instance[Property] = Library[ColorIdx] or ColorIdx;
+
             if Reg and Reg.Properties[Property] then
                 Reg.Properties[Property] = ColorIdx;
             end;
         end;
-        if next(goals) then
-            TweenService:Create(Instance, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goals):Play()
-        end
     end)
 end;
 
@@ -2323,7 +2316,7 @@ do
 
         -- slim centered track (pill appearance)
         local Track = Library:Create('Frame', {
-            BackgroundColor3 = Library:GetDarkerColor(Library.MainColor);
+            BackgroundColor3 = Library.MainColor;
             BorderSizePixel = 0;
             Position = UDim2.new(0, 4, 0.5, -3); -- small vertical center offset
             Size = UDim2.new(1, -8, 0, 6); -- thin track
@@ -2456,14 +2449,14 @@ do
 
             local trackW = (Track and Track.AbsoluteSize and Track.AbsoluteSize.X) or Slider.MaxSize;
             local X = math.ceil(Library:MapValue(Slider.Value, Slider.Min, Slider.Max, 0, trackW));
-            -- animate fill width
-            TweenService:Create(Fill, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Size = UDim2.new(0, X, 1, 0)}):Play()
+            Fill.Size = UDim2.new(0, X, 1, 0);
 
             -- position circular knob (slide handle)
             if Slider._SlideCircle and Slider._KnobSize then
                 local knobW = Slider._KnobSize
+                -- keep knob centered on fill end; clamp so knob never leaves track
                 local knobX = math.clamp(X - (knobW / 2), 0, math.max(0, trackW - (knobW / 2)))
-                TweenService:Create(Slider._SlideCircle, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = UDim2.new(0, knobX, 0.5, 0)}):Play()
+                Slider._SlideCircle.Position = UDim2.new(0, knobX, 0.5, 0)
             end
 
             HideBorderRight.Visible = not (X == trackW or X == 0);
