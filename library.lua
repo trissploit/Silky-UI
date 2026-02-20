@@ -1731,14 +1731,6 @@ do
                 { BorderColor3 = 'Black' }
             );
 
-            -- subtle scale animation on hover
-            Outer.MouseEnter:Connect(function()
-                TweenService:Create(Outer, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -4, 0, 22)}):Play()
-            end)
-            Outer.MouseLeave:Connect(function()
-                TweenService:Create(Outer, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -4, 0, 20)}):Play()
-            end) 
-
             return Outer, Inner, Label
         end
 
@@ -2195,13 +2187,6 @@ do
             { BorderColor3 = 'AccentColor' },
             { BorderColor3 = 'Black' }
         );
-        -- toggle hover scale
-        ToggleRegion.MouseEnter:Connect(function()
-            TweenService:Create(ToggleOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 15, 0, 15)}):Play()
-        end)
-        ToggleRegion.MouseLeave:Connect(function()
-            TweenService:Create(ToggleOuter, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 13, 0, 13)}):Play()
-        end) 
 
         function Toggle:UpdateColors()
             Toggle:Display();
@@ -2306,8 +2291,8 @@ do
 
         -- pill-style slider (taller + fully rounded corners)
         local SliderOuter = Library:Create('Frame', {
-            BackgroundColor3 = Color3.new(0, 0, 0);
-            BorderColor3 = Color3.new(0, 0, 0);
+            BackgroundTransparency = 1; -- hide the background
+            BorderTransparency = 1;
             Size = UDim2.new(1, -4, 0, 16); -- slightly taller for pill appearance
             ZIndex = 5;
             Parent = Container;
@@ -2339,7 +2324,6 @@ do
         -- slim centered track (pill appearance)
         local Track = Library:Create('Frame', {
             BackgroundColor3 = Library:GetDarkerColor(Library.MainColor);
-            BackgroundTransparency = 1; -- hide track background
             BorderSizePixel = 0;
             Position = UDim2.new(0, 4, 0.5, -3); -- small vertical center offset
             Size = UDim2.new(1, -8, 0, 6); -- thin track
@@ -2444,20 +2428,6 @@ do
             { BorderColor3 = 'AccentColor' },
             { BorderColor3 = 'Black' }
         );
-        SliderOuter.MouseEnter:Connect(function()
-            if Slider._SlideCircle then
-                TweenService:Create(Slider._SlideCircle, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                    {Size = UDim2.new(0, Slider._KnobSize+4, 0, Slider._KnobSize+4)})
-                    :Play()
-            end
-        end)
-        SliderOuter.MouseLeave:Connect(function()
-            if Slider._SlideCircle then
-                TweenService:Create(Slider._SlideCircle, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                    {Size = UDim2.new(0, Slider._KnobSize, 0, Slider._KnobSize)})
-                    :Play()
-            end
-        end)
 
         if type(Info.Tooltip) == 'string' then
             Library:AddToolTip(Info.Tooltip, SliderOuter)
@@ -3493,6 +3463,18 @@ function Library:CreateWindow(...)
         Parent = MainSectionInner;
     });
 
+    -- movable outline frame for selected tab (1px border)
+    local TabOutlineFrame = Library:Create('Frame', {
+        BackgroundTransparency = 1;
+        BorderColor3 = Library.OutlineColor;
+        BorderSizePixel = 1;
+        ZIndex = 3;
+        Parent = TabArea;
+    });
+    Library.TabOutlineFrame = TabOutlineFrame
+    Library.TabOutlineFrameInitialized = false
+
+
     local TabListLayout = Library:Create('UIListLayout', {
         -- keep any user-configured padding but add a default spacing so tabs aren't glued together
         Padding = UDim.new(0, (Config.TabPadding or 0) + 8);
@@ -3549,10 +3531,12 @@ function Library:CreateWindow(...)
             BorderColor3 = 'OutlineColor';
         });
 
-        -- accent outline (shows when tab is selected)
-        local TabOutline = Library:Create('UIStroke', { Color = Library.AccentColor, Thickness = 2, Parent = TabButton })
-        TabOutline.Transparency = 1
-        Library:AddToRegistry(TabOutline, { Color = 'AccentColor' })
+        -- position moving outline frame on first tab added
+        if not Library.TabOutlineFrameInitialized and Library.TabOutlineFrame then
+            Library.TabOutlineFrame.Position = TabButton.Position
+            Library.TabOutlineFrame.Size = TabButton.Size
+            Library.TabOutlineFrameInitialized = true
+        end
 
         local TabButtonLabel = Library:CreateLabel({
             Position = UDim2.new(0, 0, 0, 0);
@@ -3643,8 +3627,13 @@ function Library:CreateWindow(...)
             Blocker.BackgroundTransparency = 0;
             TabButton.BackgroundColor3 = Library.MainColor;
             Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'MainColor';
-            -- reveal accent outline for selected tab
-            pcall(function() if TabOutline then TabOutline.Transparency = 0 end end)
+            -- move shared outline to this button
+            if Library.TabOutlineFrame then
+                TweenService:Create(Library.TabOutlineFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Position = TabButton.Position,
+                    Size = TabButton.Size,
+                }):Play()
+            end
             TabFrame.Visible = true;
         end;
 
@@ -3652,8 +3641,6 @@ function Library:CreateWindow(...)
             Blocker.BackgroundTransparency = 1;
             TabButton.BackgroundColor3 = Library.BackgroundColor;
             Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'BackgroundColor';
-            -- hide accent outline
-            pcall(function() if TabOutline then TabOutline.Transparency = 1 end end)
             TabFrame.Visible = false;
         end;
 
