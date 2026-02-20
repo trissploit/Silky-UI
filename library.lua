@@ -2291,8 +2291,9 @@ do
 
         -- pill-style slider (taller + fully rounded corners)
         local SliderOuter = Library:Create('Frame', {
-            BackgroundTransparency = 1; -- hide the background
-            BorderTransparency = 1;
+            BackgroundColor3 = Color3.new(0, 0, 0);
+            BorderColor3 = Color3.new(0, 0, 0);
+            BackgroundTransparency = 1; -- make outer background invisible
             Size = UDim2.new(1, -4, 0, 16); -- slightly taller for pill appearance
             ZIndex = 5;
             Parent = Container;
@@ -2300,7 +2301,6 @@ do
 
         -- force a large corner radius for a pill look (override)
         Library:ApplyCornerRadius(Library:AddUICorner(SliderOuter, 100), 100);
-
         Library:AddToRegistry(SliderOuter, {
             BorderColor3 = 'Black';
         });
@@ -3463,18 +3463,6 @@ function Library:CreateWindow(...)
         Parent = MainSectionInner;
     });
 
-    -- movable outline frame for selected tab (1px border)
-    local TabOutlineFrame = Library:Create('Frame', {
-        BackgroundTransparency = 1;
-        BorderColor3 = Library.OutlineColor;
-        BorderSizePixel = 1;
-        ZIndex = 3;
-        Parent = TabArea;
-    });
-    Library.TabOutlineFrame = TabOutlineFrame
-    Library.TabOutlineFrameInitialized = false
-
-
     local TabListLayout = Library:Create('UIListLayout', {
         -- keep any user-configured padding but add a default spacing so tabs aren't glued together
         Padding = UDim.new(0, (Config.TabPadding or 0) + 8);
@@ -3531,11 +3519,23 @@ function Library:CreateWindow(...)
             BorderColor3 = 'OutlineColor';
         });
 
-        -- position moving outline frame on first tab added
-        if not Library.TabOutlineFrameInitialized and Library.TabOutlineFrame then
-            Library.TabOutlineFrame.Position = TabButton.Position
-            Library.TabOutlineFrame.Size = TabButton.Size
-            Library.TabOutlineFrameInitialized = true
+        -- create shared outline frame on first tab
+        if not Window.TabOutlineFrame then
+            Window.TabOutlineFrame = Library:Create('Frame', {
+                BackgroundTransparency = 1;
+                BorderSizePixel = 0;
+                Position = UDim2.new(0, 0, 0, 0);
+                Size = UDim2.new(0, 0, 0, 0);
+                ZIndex = 3;
+                Parent = TabArea;
+            });
+            Window.TabOutlineStroke = Library:Create('UIStroke', {
+                Color = Library.OutlineColor;
+                Thickness = 1;
+                Transparency = 1;
+                Parent = Window.TabOutlineFrame;
+            });
+            Library:AddToRegistry(Window.TabOutlineStroke, { Color = 'OutlineColor' });
         end
 
         local TabButtonLabel = Library:CreateLabel({
@@ -3627,12 +3627,13 @@ function Library:CreateWindow(...)
             Blocker.BackgroundTransparency = 0;
             TabButton.BackgroundColor3 = Library.MainColor;
             Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'MainColor';
-            -- move shared outline to this button
-            if Library.TabOutlineFrame then
-                TweenService:Create(Library.TabOutlineFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            -- move shared outline frame to this button
+            if Window.TabOutlineFrame then
+                TweenService:Create(Window.TabOutlineFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                     Position = TabButton.Position,
-                    Size = TabButton.Size,
-                }):Play()
+                    Size = TabButton.Size
+                }):Play();
+                TweenService:Create(Window.TabOutlineStroke, TweenInfo.new(0.15), {Transparency = 0}):Play();
             end
             TabFrame.Visible = true;
         end;
@@ -3641,6 +3642,10 @@ function Library:CreateWindow(...)
             Blocker.BackgroundTransparency = 1;
             TabButton.BackgroundColor3 = Library.BackgroundColor;
             Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'BackgroundColor';
+            -- hide outline stroke when this was active (next ShowTab will reposition)
+            if Window.TabOutlineStroke then
+                TweenService:Create(Window.TabOutlineStroke, TweenInfo.new(0.15), {Transparency = 1}):Play();
+            end
             TabFrame.Visible = false;
         end;
 
