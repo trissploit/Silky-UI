@@ -310,43 +310,6 @@ function Library:GetTextBounds(Text, Font, Size, Resolution)
     return Bounds.X, Bounds.Y
 end;
 
--- lucide icon helpers (copied from UI/ulib.lua)
-local function IsValidCustomIcon(Icon)
-    return type(Icon) == 'string'
-        and (Icon:match('rbxasset') or Icon:match('roblox%%.com/asset/%%?id=') or Icon:match('rbxthumb://type='))
-end
-
-local FetchIcons, Icons = pcall(function()
-    return (loadstring(
-        game:HttpGet('https://raw.githubusercontent.com/deividcomsono/lucide-roblox-direct/refs/heads/main/source.lua')
-    ))()
-end)
-
-function Library:GetIcon(IconName)
-    if not FetchIcons then
-        return
-    end
-
-    local success, icon = pcall(Icons.GetAsset, IconName)
-    if not success then
-        return
-    end
-    return icon
-end
-
-function Library:GetCustomIcon(IconName)
-    if not IsValidCustomIcon(IconName) then
-        return Library:GetIcon(IconName)
-    else
-        return {
-            Url = IconName;
-            ImageRectOffset = Vector2.new(0, 0);
-            ImageRectSize = Vector2.new(0, 0);
-            Custom = true;
-        }
-    end
-end
-
 function Library:GetDarkerColor(Color)
     local H, S, V = Color3.toHSV(Color);
     return Color3.fromHSV(H, S, V / 1.5);
@@ -3096,28 +3059,18 @@ function Library:CreateWindow(...)
         WindowLabel.Text = Title;
     end;
 
-    function Window:AddTab(Name, Icon)
+    function Window:AddTab(Name)
         local Tab = {
             Groupboxes = {};
             Tabboxes = {};
         };
 
-        -- allow passing an icon (string lucide name or direct asset URL)
-        local IconData = nil
-        if Icon then
-            IconData = Library:GetCustomIcon(Icon)
-        end
-
         local TabButtonWidth = Library:GetTextBounds(Name, Library.Font, 16);
-        local IconWidth = 0
-        if IconData then
-            IconWidth = 24 + 6 -- icon + spacing (keeps behavior similar to uilib)
-        end
 
         local TabButton = Library:Create('Frame', {
             BackgroundColor3 = Library.BackgroundColor;
             BorderColor3 = Library.OutlineColor;
-            Size = UDim2.new(0, TabButtonWidth + IconWidth + 8 + 4, 1, 0);
+            Size = UDim2.new(0, TabButtonWidth + 8 + 4, 1, 0);
             ZIndex = 1;
             Parent = TabArea;
         });
@@ -3127,38 +3080,10 @@ function Library:CreateWindow(...)
             BorderColor3 = 'OutlineColor';
         });
 
-        -- use UIListLayout so icon + label are always centered vertically
-        Library:Create('UIListLayout', {
-            FillDirection = Enum.FillDirection.Horizontal;
-            HorizontalAlignment = Enum.HorizontalAlignment.Center;
-            VerticalAlignment = Enum.VerticalAlignment.Center;
-            Padding = UDim.new(0, 6);
-            Parent = TabButton;
-        });
-
-        -- icon (if provided)
-        if IconData then
-            local TabIcon = Library:Create('ImageLabel', {
-                Size = UDim2.new(0, 16, 0, 16);
-                BackgroundTransparency = 1;
-                Image = IconData.Url;
-                ImageColor3 = IconData.Custom and Library.FontColor or Library.AccentColor;
-                ImageRectOffset = IconData.ImageRectOffset;
-                ImageRectSize = IconData.ImageRectSize;
-                ImageTransparency = 0.5;
-                ZIndex = 2;
-                Parent = TabButton;
-            });
-
-            Library:AddToRegistry(TabIcon, {
-                ImageColor3 = IconData.Custom and 'FontColor' or 'AccentColor';
-            });
-        end
-
         local TabButtonLabel = Library:CreateLabel({
-            Size = UDim2.new(0, TabButtonWidth, 1, 0);
+            Position = UDim2.new(0, 0, 0, 0);
+            Size = UDim2.new(1, 0, 1, -1);
             Text = Name;
-            TextYAlignment = Enum.TextYAlignment.Center;
             ZIndex = 1;
             Parent = TabButton;
         });
