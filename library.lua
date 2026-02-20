@@ -3553,6 +3553,7 @@ function Library:CreateWindow(...)
 
         function Tab:AddGroupbox(Info)
             local Groupbox = {};
+            Groupbox.Elements = {}; -- Ensure Elements table exists for AddDivider and others
 
             local BoxOuter = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
