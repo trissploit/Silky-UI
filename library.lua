@@ -3033,7 +3033,8 @@ function Library:CreateWindow(...)
     });
 
     local TabListLayout = Library:Create('UIListLayout', {
-        Padding = UDim.new(0, Config.TabPadding);
+        -- keep any user-configured padding but add a default spacing so tabs aren't glued together
+        Padding = UDim.new(0, (Config.TabPadding or 0) + 8);
         FillDirection = Enum.FillDirection.Horizontal;
         SortOrder = Enum.SortOrder.LayoutOrder;
         HorizontalAlignment = Enum.HorizontalAlignment.Center;
@@ -3043,8 +3044,10 @@ function Library:CreateWindow(...)
     local TabContainer = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
         BorderColor3 = Library.OutlineColor;
-        Position = UDim2.new(0, 8, 0, 30);
-        Size = UDim2.new(1, -16, 1, -38);
+        -- move container down a bit so tab buttons visually detach from the groupbox
+        Position = UDim2.new(0, 8, 0, 38);
+        -- compensate height so layout remains consistent
+        Size = UDim2.new(1, -16, 1, -46);
         ZIndex = 2;
         Parent = MainSectionInner;
     });
@@ -3071,7 +3074,8 @@ function Library:CreateWindow(...)
             BackgroundColor3 = Library.BackgroundColor;
             BorderColor3 = Library.OutlineColor;
             Size = UDim2.new(0, TabButtonWidth + 8 + 4, 1, 0);
-            ZIndex = 1;
+            -- render above the tab container so the tab appears detached
+            ZIndex = 4;
             Parent = TabArea;
         });
 
@@ -3084,7 +3088,8 @@ function Library:CreateWindow(...)
             Position = UDim2.new(0, 0, 0, 0);
             Size = UDim2.new(1, 0, 1, -1);
             Text = Name;
-            ZIndex = 1;
+            -- keep the label above the groupbox as well
+            ZIndex = 4;
             Parent = TabButton;
         });
 
