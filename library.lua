@@ -3111,7 +3111,7 @@ function Library:CreateWindow(...)
         local TabButtonWidth = Library:GetTextBounds(Name, Library.Font, 16);
         local IconWidth = 0
         if IconData then
-            IconWidth = 16 + 6 -- icon (16px) + spacing
+            IconWidth = 24 + 6 -- icon + spacing (keeps behavior similar to uilib)
         end
 
         local TabButton = Library:Create('Frame', {
@@ -3127,20 +3127,12 @@ function Library:CreateWindow(...)
             BorderColor3 = 'OutlineColor';
         });
 
-        -- icon (if provided)
-        local TabButtonLabel = Library:CreateLabel({
-            Position = UDim2.new(0, 6, 0, 0);
-            Size = UDim2.new(1, IconData and (-IconWidth) or 0, 1, -1);
-            Text = Name;
-            ZIndex = 1;
-            Parent = TabButton;
-        });
-
+        -- icon (if provided) — render on the right and reserve space for it
         if IconData then
             local TabIcon = Library:Create('ImageLabel', {
                 AnchorPoint = Vector2.new(1, 0.5);
                 Position = UDim2.new(1, -6, 0.5, 0);
-                Size = UDim2.new(0, 16, 0, 16);
+                Size = UDim2.new(0, 24, 0, 24);
                 BackgroundTransparency = 1;
                 Image = IconData.Url;
                 ImageColor3 = IconData.Custom and Library.FontColor or Library.AccentColor;
@@ -3155,6 +3147,14 @@ function Library:CreateWindow(...)
                 ImageColor3 = IconData.Custom and 'FontColor' or 'AccentColor';
             });
         end
+
+        local TabButtonLabel = Library:CreateLabel({
+            Position = UDim2.new(0, 0, 0, 0);
+            Size = UDim2.new(1, IconData and (-IconWidth) or 0, 1, -1);
+            Text = Name;
+            ZIndex = 1;
+            Parent = TabButton;
+        });
 
         local Blocker = Library:Create('Frame', {
             BackgroundColor3 = Library.MainColor;
