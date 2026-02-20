@@ -1687,6 +1687,7 @@ do
                 BorderColor3 = Library.OutlineColor;
                 BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, 0, 1, 0);
+                ClipsDescendants = true;
                 ZIndex = 6;
                 Parent = Outer;
             });
@@ -1697,7 +1698,7 @@ do
                 Size = UDim2.new(1, 0, 1, 0);
                 TextSize = 14;
                 Text = Button.Text;
-                ZIndex = 6;
+                ZIndex = 7;
                 Parent = Inner;
             });
 
@@ -1709,6 +1710,18 @@ do
                 Rotation = 90;
                 Parent = Inner;
             });
+
+            -- hover underline that grows inward from bottom
+            local HoverLine = Library:Create('Frame', {
+                AnchorPoint = Vector2.new(0.5, 1);
+                BackgroundColor3 = Library.AccentColor;
+                BorderSizePixel = 0;
+                Position = UDim2.new(0.5, 0, 1, 0);
+                Size = UDim2.new(0, 0, 0, 1);
+                ZIndex = 8;
+                Parent = Inner;
+            });
+            Library:AddToRegistry(HoverLine, { BackgroundColor3 = 'AccentColor' });
 
             Library:AddToRegistry(Outer, {
                 BorderColor3 = 'Black';
@@ -1723,6 +1736,18 @@ do
                 { BorderColor3 = 'AccentColor' },
                 { BorderColor3 = 'Black' }
             );
+
+            -- hover underline animation
+            Outer.MouseEnter:Connect(function()
+                TweenService:Create(HoverLine, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(1, 0, 0, 1);
+                }):Play()
+            end)
+            Outer.MouseLeave:Connect(function()
+                TweenService:Create(HoverLine, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    Size = UDim2.new(0, 0, 0, 1);
+                }):Play()
+            end)
 
             return Outer, Inner, Label
         end
@@ -1838,7 +1863,8 @@ do
 
         local Holder = Library:Create('Frame', {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 12),
+            Size = UDim2.new(1, 0, 0, 14),
+            ZIndex = 5,
             Parent = Container,
         })
 
@@ -1846,68 +1872,76 @@ do
             local TextLabel = Library:CreateLabel({
                 AutomaticSize = Enum.AutomaticSize.X,
                 BackgroundTransparency = 1,
-                Size = UDim2.fromScale(1, 0),
+                Size = UDim2.fromScale(1, 1),
                 Text = Text,
-                TextSize = 14,
-                TextTransparency = 0.5,
+                TextSize = 13,
+                TextTransparency = 0.4,
                 TextXAlignment = Enum.TextXAlignment.Center,
+                ZIndex = 6,
                 Parent = Holder,
             })
 
-            local X, _ = Library:GetTextBounds(Text, Library.Font, 14)
-            local SizeX = X//2 + 10
+            local X, _ = Library:GetTextBounds(Text, Library.Font, 13)
+            local SizeX = X//2 + 8
 
             local LeftLine = Library:Create('Frame', {
                 AnchorPoint = Vector2.new(0, 0.5),
-                BackgroundColor3 = Library.AccentColor,
+                BackgroundColor3 = Library.OutlineColor,
                 BorderSizePixel = 0,
-                Position = UDim2.fromScale(0, 0.5),
+                Position = UDim2.fromOffset(0, 7),
                 Size = UDim2.new(0.5, -SizeX, 0, 1),
+                ZIndex = 6,
                 Parent = Holder,
             })
+            Library:AddToRegistry(LeftLine, { BackgroundColor3 = 'OutlineColor' })
 
             Library:Create('UIGradient', {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Library.AccentColor),
-                    ColorSequenceKeypoint.new(1, Library.AccentColor),
+                Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 1),
+                    NumberSequenceKeypoint.new(1, 0),
                 });
-                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) });
                 Parent = LeftLine,
             })
 
             local RightLine = Library:Create('Frame', {
                 AnchorPoint = Vector2.new(1, 0.5),
-                BackgroundColor3 = Library.AccentColor,
+                BackgroundColor3 = Library.OutlineColor,
                 BorderSizePixel = 0,
-                Position = UDim2.fromScale(1, 0.5),
+                Position = UDim2.fromOffset(Holder.AbsoluteSize.X > 0 and Holder.AbsoluteSize.X or 200, 7),
+                AnchorPoint = Vector2.new(1, 0.5),
                 Size = UDim2.new(0.5, -SizeX, 0, 1),
+                ZIndex = 6,
                 Parent = Holder,
             })
+            Library:AddToRegistry(RightLine, { BackgroundColor3 = 'OutlineColor' })
 
             Library:Create('UIGradient', {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Library.AccentColor),
-                    ColorSequenceKeypoint.new(1, Library.AccentColor),
+                Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 0),
+                    NumberSequenceKeypoint.new(1, 1),
                 });
-                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) });
                 Parent = RightLine,
             })
         else
             local Line = Library:Create('Frame', {
                 AnchorPoint = Vector2.new(0.5, 0.5),
-                BackgroundColor3 = Library.AccentColor,
+                BackgroundColor3 = Library.OutlineColor,
                 BorderSizePixel = 0,
-                Position = UDim2.fromScale(0.5, 0.5),
+                Position = UDim2.fromOffset(0, 7),
+                AnchorPoint = Vector2.new(0, 0.5),
                 Size = UDim2.new(1, 0, 0, 1),
+                ZIndex = 6,
                 Parent = Holder,
             })
+            Library:AddToRegistry(Line, { BackgroundColor3 = 'OutlineColor' })
 
             Library:Create('UIGradient', {
-                Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Library.AccentColor),
-                    ColorSequenceKeypoint.new(1, Library.AccentColor),
+                Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 1),
+                    NumberSequenceKeypoint.new(0.4, 0),
+                    NumberSequenceKeypoint.new(0.6, 0),
+                    NumberSequenceKeypoint.new(1, 1),
                 });
-                Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1) });
                 Parent = Line,
             })
         end
@@ -2284,8 +2318,8 @@ do
 
         -- pill-style slider (taller + fully rounded corners)
         local SliderOuter = Library:Create('Frame', {
-            BackgroundColor3 = Color3.new(0, 0, 0);
-            BorderColor3 = Color3.new(0, 0, 0);
+            BackgroundTransparency = 1;
+            BorderSizePixel = 0;
             Size = UDim2.new(1, -4, 0, 16); -- slightly taller for pill appearance
             ZIndex = 5;
             Parent = Container;
@@ -2294,25 +2328,15 @@ do
         -- force a large corner radius for a pill look (override)
         Library:ApplyCornerRadius(Library:AddUICorner(SliderOuter, 100), 100);
 
-        Library:AddToRegistry(SliderOuter, {
-            BorderColor3 = 'Black';
-        });
-
         local SliderInner = Library:Create('Frame', {
-            BackgroundColor3 = Library.MainColor;
-            BorderColor3 = Library.OutlineColor;
-            BorderMode = Enum.BorderMode.Inset;
+            BackgroundTransparency = 1;
+            BorderSizePixel = 0;
             Size = UDim2.new(1, 0, 1, 0);
             ZIndex = 6;
             Parent = SliderOuter;
         });
 
         Library:ApplyCornerRadius(Library:AddUICorner(SliderInner, 100), 100);
-
-        Library:AddToRegistry(SliderInner, {
-            BackgroundColor3 = 'MainColor';
-            BorderColor3 = 'OutlineColor';
-        });
 
         -- slim centered track (pill appearance)
         local Track = Library:Create('Frame', {
@@ -2604,6 +2628,7 @@ do
             BorderColor3 = Library.OutlineColor;
             BorderMode = Enum.BorderMode.Inset;
             Size = UDim2.new(1, 0, 1, 0);
+            ClipsDescendants = true;
             ZIndex = 6;
             Parent = DropdownOuter;
         });
@@ -2623,6 +2648,28 @@ do
             Rotation = 90;
             Parent = DropdownInner;
         });
+
+        -- hover underline for dropdown
+        local DropHoverLine = Library:Create('Frame', {
+            AnchorPoint = Vector2.new(0.5, 1);
+            BackgroundColor3 = Library.AccentColor;
+            BorderSizePixel = 0;
+            Position = UDim2.new(0.5, 0, 1, 0);
+            Size = UDim2.new(0, 0, 0, 1);
+            ZIndex = 8;
+            Parent = DropdownInner;
+        });
+        Library:AddToRegistry(DropHoverLine, { BackgroundColor3 = 'AccentColor' });
+        DropdownOuter.MouseEnter:Connect(function()
+            TweenService:Create(DropHoverLine, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 0, 0, 1);
+            }):Play()
+        end)
+        DropdownOuter.MouseLeave:Connect(function()
+            TweenService:Create(DropHoverLine, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Size = UDim2.new(0, 0, 0, 1);
+            }):Play()
+        end)
 
         local DropdownArrow = Library:Create('ImageLabel', {
             AnchorPoint = Vector2.new(0, 0.5);
@@ -3465,6 +3512,26 @@ function Library:CreateWindow(...)
         Parent = TabArea;
     });
 
+    -- shared cursor frame that tweens between tab buttons to indicate selection
+    local TabCursor = Library:Create('Frame', {
+        BackgroundTransparency = 1;
+        BorderSizePixel = 0;
+        Size = UDim2.fromOffset(10, 21);
+        Position = UDim2.fromOffset(8, 8);
+        ZIndex = 5;
+        Visible = false;
+        Parent = MainSectionInner;
+    });
+    local TabCursorStroke = Library:Create('UIStroke', {
+        Color = Library.OutlineColor;
+        Thickness = 1;
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+        Parent = TabCursor;
+    });
+    Library:ApplyCornerRadius(Library:AddUICorner(TabCursor));
+    Library:AddToRegistry(TabCursorStroke, { Color = 'OutlineColor' });
+    local _activeCursorTween = nil;
+
     local TabContainer = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
         BorderColor3 = Library.OutlineColor;
@@ -3511,11 +3578,6 @@ function Library:CreateWindow(...)
             BackgroundColor3 = 'BackgroundColor';
             BorderColor3 = 'OutlineColor';
         });
-
-        -- accent outline (shows when tab is selected)
-        local TabOutline = Library:Create('UIStroke', { Color = Library.AccentColor, Thickness = 2, Parent = TabButton })
-        TabOutline.Transparency = 1
-        Library:AddToRegistry(TabOutline, { Color = 'AccentColor' })
 
         local TabButtonLabel = Library:CreateLabel({
             Position = UDim2.new(0, 0, 0, 0);
@@ -3606,17 +3668,32 @@ function Library:CreateWindow(...)
             Blocker.BackgroundTransparency = 0;
             TabButton.BackgroundColor3 = Library.MainColor;
             Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'MainColor';
-            -- reveal accent outline for selected tab
-            pcall(function() if TabOutline then TabOutline.Transparency = 0 end end)
             TabFrame.Visible = true;
+
+            -- tween the shared cursor to this tab button's position/size
+            pcall(function()
+                local relativePos = TabButton.AbsolutePosition - MainSectionInner.AbsolutePosition;
+                local relativeSize = TabButton.AbsoluteSize;
+                TabCursor.Visible = true;
+                if _activeCursorTween then
+                    _activeCursorTween:Cancel();
+                end;
+                _activeCursorTween = TweenService:Create(
+                    TabCursor,
+                    TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    {
+                        Position = UDim2.fromOffset(relativePos.X, relativePos.Y),
+                        Size = UDim2.fromOffset(relativeSize.X, relativeSize.Y),
+                    }
+                );
+                _activeCursorTween:Play();
+            end);
         end;
 
         function Tab:HideTab()
             Blocker.BackgroundTransparency = 1;
             TabButton.BackgroundColor3 = Library.BackgroundColor;
             Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'BackgroundColor';
-            -- hide accent outline
-            pcall(function() if TabOutline then TabOutline.Transparency = 1 end end)
             TabFrame.Visible = false;
         end;
 
